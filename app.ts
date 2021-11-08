@@ -12,7 +12,6 @@ const client: Client = new Client({
     ]
 });
 
-// client.once('ready', () => {console.log('Ready!'));
 client.once("ready", () => {
     console.log(`Ready!`);
     client.user!.setStatus('idle');
@@ -41,6 +40,11 @@ client.on('messageCreate', async (message: Message) => {
     switch (command.name) {
 
         case "?join": {
+            if (message.member!.voice.channel === null) {
+                message.channel.send("Error: join a voice channel to use this bot");
+                console.log("No voice channel for member");
+                break;
+            };
             DisPlay = new DiscordPlay(message.member!.voice, {
                 quality: "HIGHEST",
                 emptyQueueBehaviour: "CONNECTION_KEEP",
