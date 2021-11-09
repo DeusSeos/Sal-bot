@@ -20,6 +20,7 @@ client.once("ready", () => {
 });
 
 interface Command {
+    prefix: string,
     name: string,
     args: string[]
 }
@@ -33,15 +34,14 @@ interface Track {
 let DisPlay: DiscordPlay, track: Track;
 
 client.on('messageCreate', async (message: Message) => {
-    const command: Command = parseCommand(message.content);
+    const prefix = "$";
+    const command: Command = parseCommand(prefix, message.content) || { prefix, name: "", args: [] };
     console.log(message.content);
-    // console.log(parseCommand(message.content))
-    // console.log(message.member!.voice)
     switch (command.name) {
 
-        case "?join": {
+        case "join": {
             if (message.member!.voice.channel === null) {
-                message.channel.send("Error: join a voice channel to use this bot");
+                message.reply("Error: join a voice channel to use this bot");
                 console.log("No voice channel for member");
                 break;
             };
@@ -61,57 +61,89 @@ client.on('messageCreate', async (message: Message) => {
                 message.channel.send("Finished playing");
             });
             DisPlay.on('error', error => {
-                message.channel.send("Error");
+                message.reply("Error");
                 console.log(error);
             });
             break;
         }
-        case "?p":
-        case "?play": {
+        case "p":
+        case "play": {
             track = await DisPlay.enqueue(command.args.join(' '));
             message.reply(`Enqueued, **${track.title}**`)
             break;
         }
 
-        case "?next":
-        case "?skip": {
+        case "next":
+        case "skip": {
             DisPlay.skip();
+            message.reply("Skipped");
             break;
         }
 
-        case "?np":
-        case "?queue":
-        case "?playlist": {
+        case "np":
+        case "queue":
+        case "playlist": {
             message.reply(DisPlay.queue.map(x => `${DisPlay.queue.indexOf(x) + 1}. ${x.title}`).join("\n"));
             break;
         }
-        case "?dc":
-        case "?disconnect":
-        case "?leave": {
+        case "dc":
+        case "disconnect":
+        case "leave": {
             try {
                 DisPlay.stop();
                 message.reply("Left voice channel");
             } catch {
-                message.channel.send("No connection found");
+                message.reply("No connection found");
             }
             break;
         }
 
-        case "?loop":
+        case "loop": {
             if (DisPlay.toggleSongLoop()) {
-                message.channel.send(`Looping **${track.title}**`);
+                message.reply(`Looping **${track.title}**`);
             } else {
-                message.channel.send("No longer looping.");
+                message.reply("No longer looping.");
             }
             break;
+        }
 
     }
 });
 
 client.login();
 
-function parseCommand(content: string): Command {
-    const args: string[] = content.split(' ');
-    const name: string = args.shift()!;
-    return { name, args };
+process.stdin.resume();
+
+function exitHandler(cleanup: boolean, exit: boolean) {
+    if (cleanup) {
+        DisPlay.stop ? DisPlay.stop() : null;
+        console.log("Disconnected due to exit signal");
+    };
+    if (exit) process.exit();
+}
+
+//do something when app is closing
+process.on('exit', exitHandler.bind(true, true));
+
+//catches ctrl+c event
+process.on('SIGINT', exitHandler.bind(true, true));
+
+// catches "kill pid" (for example: nodemon restart)
+process.on('SIGUSR1', exitHandler.bind(true, true));
+process.on('SIGUSR2', exitHandler.bind(true, true));
+
+//catches uncaught exceptions
+process.on('uncaughtException', exitHandler.bind(true, true));
+
+function parseCommand(prefix: string, content: string): Command | undefined {
+    content = content.trim();
+    if (content.startsWith(prefix)) {
+        const args = content.slice(prefix.length).split(' ');
+        return {
+            prefix,
+            name: args[0],
+            args: args.slice(1)
+        }
+    }
+    return undefined;
 }
