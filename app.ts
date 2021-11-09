@@ -38,7 +38,6 @@ client.on('messageCreate', async (message: Message) => {
     const command: Command = parseCommand(prefix, message.content) || { prefix, name: "", args: [] };
     console.log(message.content);
     switch (command.name) {
-
         case "join": {
             if (message.member!.voice.channel === null) {
                 message.reply("Error: join a voice channel to use this bot");
@@ -55,7 +54,7 @@ client.on('messageCreate', async (message: Message) => {
                 message.channel.send("Loading resource");
             });
             DisPlay.on(DisPlayEvent.PLAYING, (oldState, newState) => {
-                message.channel.send(`Now playing, **${track.title}**`);
+                message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
             });
             DisPlay.on(DisPlayEvent.FINISH, (oldState, newState) => {
                 message.channel.send("Finished playing");
@@ -66,6 +65,7 @@ client.on('messageCreate', async (message: Message) => {
             });
             break;
         }
+
         case "p":
         case "play": {
             track = await DisPlay.enqueue(command.args.join(' '));
@@ -83,9 +83,20 @@ client.on('messageCreate', async (message: Message) => {
         case "np":
         case "queue":
         case "playlist": {
-            message.reply(DisPlay.queue.map(x => `${DisPlay.queue.indexOf(x) + 1}. ${x.title}`).join("\n"));
+            let i = 0;
+            console.log(DisPlay.queue);
+            if (DisPlay.queue.length === 0) {
+                message.reply("Queue is empty");
+                break;
+            }
+
+            message.reply(DisPlay.queue.map(x => {
+                i++;
+                return `${i}. ${x.title}`
+            }).join("\n"));
             break;
         }
+
         case "dc":
         case "disconnect":
         case "leave": {
