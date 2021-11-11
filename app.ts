@@ -137,6 +137,20 @@ client.on('messageCreate', async (message: Message) => {
                 break;
             }
 
+            case "pause":
+            case "p": {
+                DisPlay.set_pause(true);
+                message.reply("Paused");
+                break;
+            }
+
+            case "resume":
+            case "r": {
+                DisPlay.set_pause(false);
+                message.reply("Resumed");
+                break;
+            }
+
             case "loop": {
                 if (command.args.length == 0) {
                     message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
