@@ -146,8 +146,12 @@ process.stdin.resume();
 
 function exitHandler(cleanup: boolean, exit: boolean) {
     if (cleanup) {
-        DisPlay.stop ? DisPlay.stop() : null;
+        try {
+        DisPlay.stop();
         console.log("Disconnected due to exit signal");
+        } catch {
+            console.log("No connection detected. Exited")
+        }
     };
     if (exit) process.exit();
 }
