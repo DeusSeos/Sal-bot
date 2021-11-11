@@ -15,7 +15,7 @@ const client: Client = new Client({
 client.once("ready", () => {
     console.log(`Ready!`);
     client.user!.setStatus('idle');
-    client.user!.setActivity(" sadness", { type: "LISTENING" });
+    client.user!.setActivity("a war is at hand", { type: "LISTENING" });
 
 });
 
