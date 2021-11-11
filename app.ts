@@ -1,5 +1,6 @@
 import { Client, Intents, Message } from 'discord.js';
 import { DiscordPlay, DisPlayEvent, LoopMode } from 'discord-play';
+import { VoiceConnectionDestroyedState, VoiceConnectionStatus } from '@discordjs/voice';
 require("dotenv").config();
 
 const myCookies = "your-cookies-here";
@@ -59,7 +60,7 @@ client.on('messageCreate', async (message: Message) => {
                         for (let track of queue) {
                             DisPlay.enqueue(track.url);
                         }
-                    } 
+                    }
                     // if the state is not "Destroyed", the bot must still be connect to a voice channel, or is in the process of changing state
                     else {
                         message.reply("Error: Already connected to a voice channel");
@@ -72,13 +73,14 @@ client.on('messageCreate', async (message: Message) => {
                     emptyQueueBehaviour: "CONNECTION_KEEP",
                     cookies: myCookies,
                 });
-                DisPlay.on(DisPlayEvent.BUFFERING, (oldState, newState) => {
+
+                DisPlay.on(DisPlayEvent.BUFFERING, (_o, _n) => {
                     message.channel.send("Loading resource");
                 });
-                DisPlay.on(DisPlayEvent.PLAYING, (oldState, newState) => {
+                DisPlay.on(DisPlayEvent.PLAYING, (_o, _n) => {
                     message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
                 });
-                DisPlay.on(DisPlayEvent.FINISH, (oldState, newState) => {
+                DisPlay.on(DisPlayEvent.FINISH, (_o, _n) => {
                     message.channel.send("Finished playing");
                 });
                 DisPlay.on('error', error => {
@@ -90,6 +92,10 @@ client.on('messageCreate', async (message: Message) => {
 
             case "p":
             case "play": {
+                if (command.args.length == 0) {
+                    message.reply("Error: no input provided");
+                    break;
+                }
                 track = await DisPlay.enqueue(command.args.join(' '));
                 message.reply(`Enqueued, **${track.title}**`)
                 break;
@@ -177,13 +183,13 @@ function exitHandler(cleanup: boolean, exit: boolean) {
     if (exit) process.exit();
 }
 
-//do something when app is closing
+// when app is closing
 process.on('exit', exitHandler.bind(true, true));
 
-//catches ctrl+c event
+// catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(true, true));
 
-// catches "kill pid" (for example: nodemon restart)
+// catches kill signals
 process.on('SIGUSR1', exitHandler.bind(true, true));
 process.on('SIGUSR2', exitHandler.bind(true, true));
 
