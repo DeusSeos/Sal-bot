@@ -1,5 +1,5 @@
 import { Client, Intents, Message } from 'discord.js';
-import { DiscordPlay, DisPlayEvent } from 'discord-play';
+import { DiscordPlay, DisPlayEvent, LoopMode } from 'discord-play';
 require("dotenv").config();
 
 const myCookies = "your-cookies-here";
@@ -101,6 +101,7 @@ client.on('messageCreate', async (message: Message) => {
         case "disconnect":
         case "leave": {
             try {
+                DisPlay.queue = [];
                 DisPlay.stop();
                 message.reply("Left voice channel");
             } catch {
@@ -110,10 +111,28 @@ client.on('messageCreate', async (message: Message) => {
         }
 
         case "loop": {
-            if (DisPlay.toggleSongLoop()) {
-                message.reply(`Looping **${track.title}**`);
-            } else {
-                message.reply("No longer looping.");
+            console.log(command.args);
+            if (command.args.length == 0) {
+                message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+            }
+            else {
+                switch (command.args[0]) {
+                    case "none":
+                        message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+                        break;
+                    case "track":
+                    case "queue":
+                    case "playlist":
+                    case "p":
+                        message.reply(DisPlay.setLoopMode(LoopMode.QUEUE)[1]);
+                        break;
+                    case "current":
+                    case "single":
+                    case "song":
+                    case "s":
+                        message.reply(DisPlay.setLoopMode(LoopMode.SINGLE)[1]);
+                        break;
+                }
             }
             break;
         }
