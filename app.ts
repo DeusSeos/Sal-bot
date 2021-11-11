@@ -41,7 +41,6 @@ client.on('messageCreate', async (message: Message) => {
         case "join": {
             if (message.member!.voice.channel === null) {
                 message.reply("Error: join a voice channel to use this bot");
-                console.log("No voice channel for member");
                 break;
             };
             DisPlay = new DiscordPlay(message.member!.voice, {
@@ -84,7 +83,6 @@ client.on('messageCreate', async (message: Message) => {
         case "queue":
         case "playlist": {
             let i = 0;
-            console.log(DisPlay.queue);
             if (DisPlay.queue.length === 0) {
                 message.reply("Queue is empty");
                 break;
@@ -111,7 +109,6 @@ client.on('messageCreate', async (message: Message) => {
         }
 
         case "loop": {
-            console.log(command.args);
             if (command.args.length == 0) {
                 message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
             }
