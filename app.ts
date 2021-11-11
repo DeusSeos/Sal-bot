@@ -45,11 +45,32 @@ client.on('messageCreate', async (message: Message) => {
                     message.reply("Error: join a voice channel to use this bot");
                     break;
                 };
+
+                // if the DisPlay already exists, then the bot must have connected to a voice channel
+                if (DisPlay) {
+                    // if the state is "Destroyed", then the bot must have disconnected from the voice channel. reconstruct the DisPlay
+                    if ((<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status == VoiceConnectionStatus.Destroyed) {
+                        let queue = DisPlay.queue;
+                        DisPlay = new DiscordPlay(message.member!.voice, {
+                            quality: "HIGHEST",
+                            emptyQueueBehaviour: "CONNECTION_KEEP",
+                            cookies: myCookies,
+                        });
+                        for (let track of queue) {
+                            DisPlay.enqueue(track.url);
+                        }
+                    } 
+                    // if the state is not "Destroyed", the bot must still be connect to a voice channel, or is in the process of changing state
+                    else {
+                        message.reply("Error: Already connected to a voice channel");
+                    }
+                    break;
+                }
+
                 DisPlay = new DiscordPlay(message.member!.voice, {
                     quality: "HIGHEST",
                     emptyQueueBehaviour: "CONNECTION_KEEP",
                     cookies: myCookies,
-
                 });
                 DisPlay.on(DisPlayEvent.BUFFERING, (oldState, newState) => {
                     message.channel.send("Loading resource");
@@ -101,7 +122,7 @@ client.on('messageCreate', async (message: Message) => {
             case "disconnect":
             case "leave": {
                 try {
-                    DisPlay.queue = [];
+                    DisPlay.set_pause(true);
                     DisPlay.stop();
                     message.reply("Left voice channel");
                 } catch {
