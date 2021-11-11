@@ -1,11 +1,14 @@
 {
-  "dependencies": {
-    "@discordjs/opus": "^0.5.3",
-    "@discordjs/voice": "^0.7.2",
-    "discord-play": "^2.2.0",
-    "discord.js": "^13.3.1",
-    "dotenv": "^10.0.0",
-    "libsodium-wrappers": "^0.7.9",
-    "play-dl": "^1.2.7"
-  }
+    "dependencies": {
+        "@discordjs/opus": "^0.5.3",
+        "@discordjs/voice": "^0.7.2",
+        "discord-play": "^2.2.0",
+        "discord.js": "^13.3.1",
+        "dotenv": "^10.0.0",
+        "libsodium-wrappers": "^0.7.9",
+        "play-dl": "^1.2.7"
+    },
+    "scripts": {
+        "postinstall": "npx patch-package"
+    }
 }

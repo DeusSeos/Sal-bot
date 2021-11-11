@@ -1,0 +1,851 @@
+diff --git a/node_modules/discord-play/dist/index.d.ts b/node_modules/discord-play/dist/index.d.ts
+index ecc38c0..c9d479e 100644
+--- a/node_modules/discord-play/dist/index.d.ts
++++ b/node_modules/discord-play/dist/index.d.ts
+@@ -12,7 +12,7 @@ interface Options {
+      */
+     quality: "LOWEST" | "MEDIUM" | "HIGHEST";
+     /**
+-     * Defines the behaviour of what should happen after the queue array goes empty.
++     * Defines the behaviour of what should happen after the queue array becomes empty.
+      *
+      * CONNECTION_KEEP - Continues to remain in the voice channel.
+      *
+@@ -20,6 +20,9 @@ interface Options {
+      */
+     emptyQueueBehaviour: "CONNECTION_KEEP" | "CONNECTION_DESTROY";
+ }
++/**
++ * The interface of objects stored in queue array
++ */
+ interface Enqueue {
+     /**
+      * The video title for the track.
+@@ -33,22 +36,40 @@ interface Enqueue {
+      * The name of channel of the track video.
+      */
+     artist: string;
++    /**
++     * The id of the user who added the track to the playlist.
++     */
++    addedBy: string;
++}
++declare enum LoopMode {
++    /**
++     * Not looping
++     */
++    NONE = 0,
++    /**
++     * Looping the current track
++     */
++    SINGLE = 1,
++    /**
++     * Looping the whole queue
++     */
++    QUEUE = 2
+ }
+ interface DiscordPlayEvents extends ConnectionEvents, PlayerEvents {
+ }
++/**
++ * Initializes the Connection, Player.
++ * Re-exports all the events to be directly emitted from here,
++ * and not from the modules itself, for easier event handling.
++ */
+ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
+     connection: Connection;
+     player: Player;
+     private cookies;
+     queue: Enqueue[];
+     options: Options;
+-    private songLoop;
+-    private queueLoop;
++    private loop_state;
+     /**
+-     * Initializes the Connection, Player.
+-     * Re-exports all the events to be directly emitted from here,
+-     * and not from the modules itself, for easier event handling.
+-     *
+      * @param voice The voice channel object
+      * @param options Various options to configure DiscordPlay
+      */
+@@ -69,11 +90,10 @@ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
+     /**
+      *
+      */
+-    toggleSongLoop(): boolean;
++    setLoopMode(new_state: LoopMode): [LoopMode, string];
+     /**
+      * Processes the queue and executes behaviour.
+      */
+     private processQueue;
+ }
+-export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent };
+-//# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
++export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent, LoopMode };
+diff --git a/node_modules/discord-play/dist/index.js b/node_modules/discord-play/dist/index.js
+index c1c3e74..0f96d10 100644
+--- a/node_modules/discord-play/dist/index.js
++++ b/node_modules/discord-play/dist/index.js
+@@ -1,93 +1,194 @@
+ "use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
+-exports.DisPlayEvent = exports.DisPlayPlayer = exports.DisPlayConnection = exports.DiscordPlay = void 0;
+-const voice_1 = require("@discordjs/voice");
+-const play_dl_1 = require("play-dl");
+-const tiny_typed_emitter_1 = require("tiny-typed-emitter");
+-const connection_js_1 = require("./src/connection.js");
+-Object.defineProperty(exports, "DisPlayConnection", { enumerable: true, get: function () { return connection_js_1.Connection; } });
+-const eventEnums_js_1 = require("./src/eventEnums.js");
+-Object.defineProperty(exports, "DisPlayEvent", { enumerable: true, get: function () { return eventEnums_js_1.DisPlayEvent; } });
+-const player_js_1 = require("./src/player.js");
+-Object.defineProperty(exports, "DisPlayPlayer", { enumerable: true, get: function () { return player_js_1.Player; } });
+-const track_js_1 = require("./src/track.js");
+-class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
++var __extends = (this && this.__extends) || (function () {
++    var extendStatics = function (d, b) {
++        extendStatics = Object.setPrototypeOf ||
++            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
++            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
++        return extendStatics(d, b);
++    };
++    return function (d, b) {
++        if (typeof b !== "function" && b !== null)
++            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
++        extendStatics(d, b);
++        function __() { this.constructor = d; }
++        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
++    };
++})();
++var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
++    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
++    return new (P || (P = Promise))(function (resolve, reject) {
++        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
++        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
++        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
++        step((generator = generator.apply(thisArg, _arguments || [])).next());
++    });
++};
++var __generator = (this && this.__generator) || function (thisArg, body) {
++    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
++    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
++    function verb(n) { return function (v) { return step([n, v]); }; }
++    function step(op) {
++        if (f) throw new TypeError("Generator is already executing.");
++        while (_) try {
++            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
++            if (y = 0, t) op = [op[0] & 2, t.value];
++            switch (op[0]) {
++                case 0: case 1: t = op; break;
++                case 4: _.label++; return { value: op[1], done: false };
++                case 5: _.label++; y = op[1]; op = [0]; continue;
++                case 7: op = _.ops.pop(); _.trys.pop(); continue;
++                default:
++                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
++                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
++                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
++                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
++                    if (t[2]) _.ops.pop();
++                    _.trys.pop(); continue;
++            }
++            op = body.call(thisArg, _);
++        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
++        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
++    }
++};
++exports.__esModule = true;
++exports.LoopMode = exports.DisPlayEvent = exports.DisPlayPlayer = exports.DisPlayConnection = exports.DiscordPlay = void 0;
++var voice_1 = require("@discordjs/voice");
++var play_dl_1 = require("play-dl");
++var tiny_typed_emitter_1 = require("tiny-typed-emitter");
++var connection_js_1 = require("./src/connection.js");
++exports.DisPlayConnection = connection_js_1.Connection;
++var eventEnums_js_1 = require("./src/eventEnums.js");
++exports.DisPlayEvent = eventEnums_js_1.DisPlayEvent;
++var player_js_1 = require("./src/player.js");
++exports.DisPlayPlayer = player_js_1.Player;
++var track_js_1 = require("./src/track.js");
++var LoopMode;
++(function (LoopMode) {
++    /**
++     * Not looping
++     */
++    LoopMode[LoopMode["NONE"] = 0] = "NONE";
++    /**
++     * Looping the current track
++     */
++    LoopMode[LoopMode["SINGLE"] = 1] = "SINGLE";
++    /**
++     * Looping the whole queue
++     */
++    LoopMode[LoopMode["QUEUE"] = 2] = "QUEUE";
++})(LoopMode || (LoopMode = {}));
++exports.LoopMode = LoopMode;
++/**
++ * Initializes the Connection, Player.
++ * Re-exports all the events to be directly emitted from here,
++ * and not from the modules itself, for easier event handling.
++ */
++var DiscordPlay = /** @class */ (function (_super) {
++    __extends(DiscordPlay, _super);
+     /**
+-     * Initializes the Connection, Player.
+-     * Re-exports all the events to be directly emitted from here,
+-     * and not from the modules itself, for easier event handling.
+-     *
+      * @param voice The voice channel object
+      * @param options Various options to configure DiscordPlay
+      */
+-    constructor(voice, options) {
+-        super();
+-        this.queue = [];
+-        this.songLoop = false;
+-        this.queueLoop = false;
+-        this.options = options;
+-        this.connection = new connection_js_1.Connection(voice);
+-        this.player = new player_js_1.Player(voice.guild.id);
+-        this.cookies = options === null || options === void 0 ? void 0 : options.cookies;
+-        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(eventName => {
++    function DiscordPlay(voice, options) {
++        var _this = _super.call(this) || this;
++        _this.queue = [];
++        _this.loop_state = LoopMode.NONE;
++        _this.options = options;
++        _this.connection = new connection_js_1.Connection(voice);
++        _this.player = new player_js_1.Player(voice.guild.id);
++        _this.cookies = options === null || options === void 0 ? void 0 : options.cookies;
++        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(function (eventName) {
+             // @ts-ignore
+-            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++            _this.connection.on(eventName, function (arg1, arg2) { return _this.emit(eventName, arg1, arg2); });
+         });
+-        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(eventName => {
++        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(function (eventName) {
+             // @ts-ignore
+-            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++            _this.player.on(eventName, function (arg1, arg2) { return _this.emit(eventName, arg1, arg2); });
+         });
+-        this.player.on("audioPlayerFinish", (arg1, arg2) => {
+-            this.emit("audioPlayerFinish", arg1, arg2);
+-            if (!this.songLoop)
+-                this.queue.shift();
+-            this.processQueue();
++        _this.player.on("audioPlayerFinish", function (arg1, arg2) {
++            _this.emit("audioPlayerFinish", arg1, arg2);
++            if (_this.loop_state == LoopMode.SINGLE)
++                _this.queue.shift();
++            if (_this.loop_state == LoopMode.QUEUE)
++                _this.queue.push(_this.queue.shift());
++            _this.processQueue();
+         });
++        return _this;
+     }
+     /**
+      * Enqueues the track from the args provided.
+      * @param args The terms to be searched. (Can be terms or a youtube url)
+      */
+-    async enqueue(args) {
++    DiscordPlay.prototype.enqueue = function (args) {
+         var _a;
+-        let details;
+-        switch ((0, play_dl_1.yt_validate)(args)) {
+-            case "video":
+-                details = (await (0, play_dl_1.video_basic_info)(args, this.cookies)).video_details;
+-                break;
+-            default:
+-                details = (await (0, play_dl_1.search)(args, { limit: 1 }))[0];
+-                break;
+-        }
+-        // @ts-ignore
+-        const track = { title: details.title, url: details.url, artist: (_a = details.channel) === null || _a === void 0 ? void 0 : _a.name };
+-        this.queue.push(track);
+-        this.processQueue();
+-        return track;
+-    }
++        return __awaiter(this, void 0, void 0, function () {
++            var details, _b, track;
++            return __generator(this, function (_c) {
++                switch (_c.label) {
++                    case 0:
++                        _b = (0, play_dl_1.yt_validate)(args);
++                        switch (_b) {
++                            case "video": return [3 /*break*/, 1];
++                        }
++                        return [3 /*break*/, 3];
++                    case 1: return [4 /*yield*/, (0, play_dl_1.video_basic_info)(args)];
++                    case 2:
++                        details = (_c.sent()).video_details;
++                        return [3 /*break*/, 5];
++                    case 3: return [4 /*yield*/, (0, play_dl_1.search)(args, { limit: 1 })];
++                    case 4:
++                        details = (_c.sent())[0];
++                        return [3 /*break*/, 5];
++                    case 5:
++                        track = { title: details.title, url: details.url, artist: (_a = details.channel) === null || _a === void 0 ? void 0 : _a.name };
++                        this.queue.push(track);
++                        this.processQueue();
++                        return [2 /*return*/, track];
++                }
++            });
++        });
++    };
+     /**
+      *
+      */
+-    skip() {
++    DiscordPlay.prototype.skip = function () {
+         this.player.stop();
+-    }
++    };
+     /**
+      *
+      */
+-    stop() {
++    DiscordPlay.prototype.stop = function () {
+         this.player.stop();
+         this.connection.destroy();
+-    }
++    };
+     /**
+      *
+      */
+-    toggleSongLoop() {
+-        return this.songLoop = !this.songLoop;
+-    }
++    DiscordPlay.prototype.setLoopMode = function (new_state) {
++        if (this.loop_state == LoopMode.NONE)
++            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
++        else if (this.loop_state == LoopMode.SINGLE) {
++            if (new_state == LoopMode.NONE)
++                return [this.loop_state = LoopMode.NONE, "Single looping disabled"];
++            else if (new_state == LoopMode.QUEUE)
++                return [this.loop_state, "Turn off single loop to enable queue looping"];
++            else if (new_state == LoopMode.SINGLE)
++                return [this.loop_state = LoopMode.NONE, "Single looping disabled"];
++        }
++        else if (this.loop_state == LoopMode.QUEUE) {
++            if (new_state == LoopMode.NONE)
++                return [this.loop_state = new_state, "Queue looping disabled"];
++            else if (new_state == LoopMode.SINGLE)
++                return [this.loop_state, "Turn off queue looping to enable single looping"];
++            else if (new_state == LoopMode.QUEUE)
++                return [this.loop_state = LoopMode.NONE, "Queue looping disabled"];
++        }
++    };
+     /**
+      * Processes the queue and executes behaviour.
+      */
+-    processQueue() {
++    DiscordPlay.prototype.processQueue = function () {
++        var _this = this;
+         if (!this.queue.length) {
+             switch (this.options.emptyQueueBehaviour) {
+                 case "CONNECTION_KEEP": break;
+@@ -100,9 +201,9 @@ class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
+         if (this.player.player.state.status !== voice_1.AudioPlayerStatus.Idle)
+             return;
+         (0, track_js_1.createTrackResource)(this.queue[0].url, this.cookies)
+-            .then(resource => void this.player.player.play(resource))
+-            .catch(error => this.emit('error', error));
+-    }
+-}
++            .then(function (resource) { return void _this.player.player.play(resource); })["catch"](function (error) { return _this.emit('error', error); });
++    };
++    return DiscordPlay;
++}(tiny_typed_emitter_1.TypedEmitter));
+ exports.DiscordPlay = DiscordPlay;
+ //# sourceMappingURL=index.js.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/index.js.map b/node_modules/discord-play/dist/index.js.map
+index cea5869..3d0609b 100644
+--- a/node_modules/discord-play/dist/index.js.map
++++ b/node_modules/discord-play/dist/index.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"index.js","sourceRoot":"","sources":["../index.ts"],"names":[],"mappings":"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","sourcesContent":["import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice';\nimport { search, stream, stream_from_info, video_basic_info, video_info, yt_validate } from 'play-dl';\nimport { Video } from 'play-dl/dist/YouTube/classes/Video';\nimport { TypedEmitter } from 'tiny-typed-emitter';\nimport { Connection, ConnectionEvents } from './src/connection.js';\nimport { DisPlayEvent } from './src/eventEnums.js';\nimport { Player, PlayerEvents } from './src/player.js';\nimport { createTrackResource } from './src/track.js';\n\ninterface Options {\n    /**\n     * (Optional) The cookies to play age-restricted videos.\n     */\n    cookies?: string,\n    /**\n     * Sets the quality of streams.\n     */\n    quality: \"LOWEST\" | \"MEDIUM\" | \"HIGHEST\",\n    /**\n     * Defines the behaviour of what should happen after the queue array goes empty.\n     * \n     * CONNECTION_KEEP - Continues to remain in the voice channel.\n     * \n     * CONNECTION_DESTROY - Leaves the voice channel.\n     */\n    emptyQueueBehaviour: \"CONNECTION_KEEP\" | \"CONNECTION_DESTROY\"\n}\n\ninterface Enqueue {\n    /**\n     * The video title for the track.\n     */\n    title: string,\n    /**\n     * The video url for the track.\n     */\n    url: string,\n    /**\n     * The name of channel of the track video.\n     */\n    artist: string\n}\n\ninterface DiscordPlayEvents extends ConnectionEvents, PlayerEvents { }\n\nexport class DiscordPlay extends TypedEmitter<DiscordPlayEvents>{\n    public connection: Connection;\n    public player: Player;\n    private cookies: string | undefined;\n    public queue: Enqueue[] = [];\n    public options: Options;\n    private songLoop = false;\n    private queueLoop = false;\n    /**\n     * Initializes the Connection, Player.\n     * Re-exports all the events to be directly emitted from here,\n     * and not from the modules itself, for easier event handling.\n     * \n     * @param voice The voice channel object\n     * @param options Various options to configure DiscordPlay\n     */\n    constructor(voice: any, options: Options) {\n        super();\n        this.options = options;\n        this.connection = new Connection(voice);\n        this.player = new Player(voice.guild.id);\n        this.cookies = options?.cookies;\n        [\"voiceConnectionCreate\", \"voiceConnectionMove\", \"voiceConnectionKick\", \"voiceConnectionDestroy\", \"selfDeafen\", \"selfMute\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        [\"audioPlayerBuffer\", \"audioPlayerStart\", \"audioPlayerPause\", \"audioPlayerResume\", \"audioPlayerAutoPause\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        this.player.on(\"audioPlayerFinish\", (arg1, arg2) => {\n            this.emit(\"audioPlayerFinish\", arg1, arg2);\n            if (!this.songLoop) this.queue.shift();\n            this.processQueue();\n        });\n    }\n    /**\n     * Enqueues the track from the args provided.\n     * @param args The terms to be searched. (Can be terms or a youtube url)\n     */\n    public async enqueue(args: string): Promise<Enqueue> {\n        let details;\n        switch (yt_validate(args)) {\n            case \"video\":\n                details = (await video_basic_info(args, this.cookies)).video_details;\n                break;\n            default:\n                details = (await search(args, { limit: 1 }))![0];\n                break;\n        }\n        // @ts-ignore\n        const track: Enqueue = { title: details.title, url: details.url!, artist: details.channel?.name };\n        this.queue.push(track);\n        this.processQueue();\n        return track;\n    }\n    /**\n     * \n     */\n    public skip(): void {\n        this.player.stop();\n    }\n    /**\n     * \n     */\n    public stop(): void {\n        this.player.stop();\n        this.connection.destroy();\n    }\n    /**\n     * \n     */\n    public toggleSongLoop(): boolean {\n        return this.songLoop = !this.songLoop;\n    }\n    /**\n     * Processes the queue and executes behaviour.\n     */\n    private processQueue(): void {\n        if (!this.queue.length) {\n            switch (this.options.emptyQueueBehaviour) {\n                case \"CONNECTION_KEEP\": break;\n                case \"CONNECTION_DESTROY\": this.connection.destroy(); break;\n            }\n            return;\n        }\n        if (this.player.player.state.status !== AudioPlayerStatus.Idle) return;\n        createTrackResource(this.queue[0].url, this.cookies)\n            .then(resource => void this.player.player.play(resource))\n            .catch(error => this.emit('error', error));\n    }\n}\n\nexport { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent };"]}
+\ No newline at end of file
++{"version":3,"file":"index.js","sourceRoot":"","sources":["index.ts"],"names":[],"mappings":"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"}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/index.ts b/node_modules/discord-play/dist/index.ts
+new file mode 100644
+index 0000000..5d1caa2
+--- /dev/null
++++ b/node_modules/discord-play/dist/index.ts
+@@ -0,0 +1,178 @@
++import { AudioPlayerStatus } from '@discordjs/voice';
++import { search, video_basic_info, yt_validate } from 'play-dl';
++import { TypedEmitter } from 'tiny-typed-emitter';
++import { Connection, ConnectionEvents } from './src/connection.js';
++import { DisPlayEvent } from './src/eventEnums.js';
++import { Player, PlayerEvents } from './src/player.js';
++import { createTrackResource } from './src/track.js';
++
++interface Options {
++    /**
++     * (Optional) The cookies to play age-restricted videos.
++     */
++    cookies?: string,
++    /**
++     * Sets the quality of streams.
++     */
++    quality: "LOWEST" | "MEDIUM" | "HIGHEST",
++    /**
++     * Defines the behaviour of what should happen after the queue array becomes empty.
++     * 
++     * CONNECTION_KEEP - Continues to remain in the voice channel.
++     * 
++     * CONNECTION_DESTROY - Leaves the voice channel.
++     */
++    emptyQueueBehaviour: "CONNECTION_KEEP" | "CONNECTION_DESTROY"
++}
++
++/**
++ * The interface of objects stored in queue array
++ */
++interface Enqueue {
++    /**
++     * The video title for the track.
++     */
++    title: string,
++    /**
++     * The video url for the track.
++     */
++    url: string,
++    /**
++     * The name of channel of the track video.
++     */
++    artist: string,
++    /**
++     * The id of the user who added the track to the playlist.
++     */
++    addedBy: string
++}
++
++enum LoopMode {
++    /**
++     * Not looping
++     */
++    NONE,
++    /**
++     * Looping the current track
++     */
++    SINGLE,
++    /**
++     * Looping the whole queue
++     */
++    QUEUE
++}
++
++interface DiscordPlayEvents extends ConnectionEvents, PlayerEvents { }
++
++/**
++ * Initializes the Connection, Player.
++ * Re-exports all the events to be directly emitted from here,
++ * and not from the modules itself, for easier event handling.
++ */
++export class DiscordPlay extends TypedEmitter<DiscordPlayEvents>{
++    public connection: Connection;
++    public player: Player;
++    private cookies: string | undefined;
++    public queue: Enqueue[] = [];
++    public options: Options;
++    private loop_state = LoopMode.NONE;
++    /** 
++     * @param voice The voice channel object
++     * @param options Various options to configure DiscordPlay
++     */
++    constructor(voice: any, options: Options) {
++        super();
++        this.options = options;
++        this.connection = new Connection(voice);
++        this.player = new Player(voice.guild.id);
++        this.cookies = options?.cookies;
++        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        this.player.on("audioPlayerFinish", (arg1, arg2) => {
++            this.emit("audioPlayerFinish", arg1, arg2);
++            if (this.loop_state == LoopMode.SINGLE) this.queue.shift();
++            if (this.loop_state == LoopMode.QUEUE) this.queue.push(this.queue.shift());
++            this.processQueue();
++        });
++    }
++    /**
++     * Enqueues the track from the args provided.
++     * @param args The terms to be searched. (Can be terms or a youtube url)
++     */
++    public async enqueue(args: string): Promise<Enqueue> {
++        let details;
++        switch (yt_validate(args)) {
++            case "video":
++                details = (await video_basic_info(args)).video_details;
++                break;
++            default:
++                details = (await search(args, { limit: 1 }))![0];
++                break;
++        }
++        // @ts-ignore
++        const track: Enqueue = { title: details.title, url: details.url!, artist: details.channel?.name };
++        this.queue.push(track);
++        this.processQueue();
++        return track;
++    }
++    /**
++     * 
++     */
++    public skip(): void {
++        this.player.stop();
++    }
++    /**
++     * 
++     */
++    public stop(): void {
++        this.player.stop();
++        this.connection.destroy();
++    }
++    /**
++     * 
++     */
++    public setLoopMode(new_state: LoopMode): [LoopMode, string] {
++        if (this.loop_state == LoopMode.NONE)
++            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
++        else if (this.loop_state == LoopMode.SINGLE) {
++            if (new_state == LoopMode.NONE)
++                return [this.loop_state = LoopMode.NONE, "Single looping disabled"];
++            else if (new_state == LoopMode.QUEUE)
++                return [this.loop_state, "Turn off single loop to enable queue looping"];
++            else if (new_state == LoopMode.SINGLE)
++                return [this.loop_state = LoopMode.NONE, "Single looping disabled"];
++        }
++        else if (this.loop_state == LoopMode.QUEUE) {
++            if (new_state == LoopMode.NONE)
++                return [this.loop_state = new_state, "Queue looping disabled"];
++            else if (new_state == LoopMode.SINGLE)
++                return [this.loop_state, "Turn off queue looping to enable single looping"];
++            else if (new_state == LoopMode.QUEUE)
++                return [this.loop_state = LoopMode.NONE, "Queue looping disabled"];
++        }
++    }
++    /**
++     * Processes the queue and executes behaviour.
++     */
++    private processQueue(): void {
++        if (!this.queue.length) {
++            switch (this.options.emptyQueueBehaviour) {
++                case "CONNECTION_KEEP": break;
++                case "CONNECTION_DESTROY": this.connection.destroy(); break;
++            }
++            return;
++        }
++        if (this.player.player.state.status !== AudioPlayerStatus.Idle) return;
++        createTrackResource(this.queue[0].url, this.cookies)
++            .then(resource => void this.player.player.play(resource))
++            .catch(error => this.emit('error', error));
++    }
++}
++
++export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent , LoopMode};
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/connection.ts b/node_modules/discord-play/dist/src/connection.ts
+new file mode 100644
+index 0000000..a895674
+--- /dev/null
++++ b/node_modules/discord-play/dist/src/connection.ts
+@@ -0,0 +1,99 @@
++import { entersState, generateDependencyReport, joinVoiceChannel, VoiceConnection, VoiceConnectionDisconnectReason, VoiceConnectionStatus } from '@discordjs/voice';
++import { TypedEmitter } from 'tiny-typed-emitter';
++import { promisify } from 'util';
++const wait = promisify(setTimeout);
++
++export interface ConnectionEvents {
++    /**
++     * 
++     */
++    voiceConnectionCreate: (voiceId: string | null) => void,
++    /**
++     * 
++     */
++    voiceConnectionMove: (oldVoiceId: string | null, newVoiceId: string | null) => void,
++    /**
++     * 
++     */
++    voiceConnectionKick: (voiceId: string | null) => void,
++    /**
++     * 
++     */
++    voiceConnectionDestroy: (voidId: string | null) => void,
++    /**
++     * 
++     */
++    selfDeafen: (flag: boolean) => void,
++    /**
++     * 
++     */
++    selfMute: (flag: boolean) => void,
++    /**
++     * 
++     */
++    error: (error: Error) => void,
++}
++
++export class Connection extends TypedEmitter<ConnectionEvents> {
++    public connection: VoiceConnection;
++    public readyLock = false;
++    private oldVoiceID: string | null;
++    constructor(voice: any) {
++        super();
++        this.connection = joinVoiceChannel({ channelId: voice.channel.id, guildId: voice.guild.id, adapterCreator: voice.guild.voiceAdapterCreator });
++        this.oldVoiceID = this.connection.joinConfig.channelId;
++        setImmediate(() => this.emit('voiceConnectionCreate', this.connection.joinConfig.channelId));
++        this.connection.on('stateChange', async (oldState, newState) => {
++            if (newState.status === VoiceConnectionStatus.Disconnected) {
++                if (newState.reason === VoiceConnectionDisconnectReason.WebSocketClose && newState.closeCode === 4014) {
++                    try {
++                        await entersState(this.connection, VoiceConnectionStatus.Connecting, 3_000);
++                        this.emit('voiceConnectionMove', this.oldVoiceID, this.connection.joinConfig.channelId);
++                        this.oldVoiceID = this.connection.joinConfig.channelId;
++                    } catch {
++                        this.connection.destroy();
++                        this.emit('voiceConnectionKick', this.connection.joinConfig.channelId);
++                    }
++                } else if (this.connection.rejoinAttempts < 5) {
++                    await wait((this.connection.rejoinAttempts + 1) * 3_000);
++                    this.connection.rejoin();
++                } else {
++                    this.connection.destroy();
++                    this.emit('error', new Error("connection_error"));
++                }
++            } else if (newState.status === VoiceConnectionStatus.Destroyed) {
++                this.emit('voiceConnectionDestroy', this.connection.joinConfig.channelId);
++            } else if (!this.readyLock && (newState.status === VoiceConnectionStatus.Connecting || newState.status === VoiceConnectionStatus.Signalling)) {
++                this.readyLock = true;
++                try {
++                    await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
++                } catch {
++                    if (this.connection.state.status !== VoiceConnectionStatus.Destroyed) {
++                        this.connection.destroy();
++                        this.emit('error', new Error("connection_error"));
++                    }
++                } finally {
++                    this.readyLock = false;
++                }
++            }
++        });
++    }
++    public async toggleDeafen() {
++        const flag = this.connection.joinConfig.selfDeaf;
++        this.connection.joinConfig.selfDeaf = !flag
++        this.connection.rejoin(this.connection.joinConfig);
++        this.emit('selfDeafen', !flag);
++    }
++    public async toggleMute() {
++        const flag = this.connection.joinConfig.selfMute;
++        this.connection.joinConfig.selfMute = !flag;
++        this.connection.rejoin(this.connection.joinConfig);
++        this.emit('selfMute', !flag);
++    }
++    public async destroy() {
++        this.connection.destroy();
++    }
++    public getDependancies() {
++        return generateDependencyReport();
++    }
++}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/eventEnums.ts b/node_modules/discord-play/dist/src/eventEnums.ts
+new file mode 100644
+index 0000000..2a009cd
+--- /dev/null
++++ b/node_modules/discord-play/dist/src/eventEnums.ts
+@@ -0,0 +1,50 @@
++export enum DisPlayEvent {
++    /**
++     * The event when voice connection has been created.
++     */
++    VOICE_JOIN = "voiceConnectionCreate",
++    /**
++     * The event when voice connection has been destroyed (i.e. bot left the voice channel).
++     */
++    VOICE_LEAVE = "voiceConnectionDestroy",
++    /**
++     * The event when bot is moved from one voice channel to another.
++     */
++    VOICE_MOVE = "voiceConnectionMove",
++    /**
++     * The event when bot was forcibly kicked from voice channel.
++     */
++    VOICE_KICK = "voiceConnectionKick",
++    /**
++     * The event when `selfDeafen()` was used.
++     */
++    SELF_DEAFEN = "selfDeafen",
++    /**
++     * The event when `selfMute()` was used.
++     */
++    SELF_MUTE = "selfMute",
++    /**
++     * 
++     */
++    BUFFERING = "audioPlayerBuffer",
++    /**
++     * 
++     */
++    PLAYING = "audioPlayerStart",
++    /**
++     * 
++     */
++    FINISH = "audioPlayerFinish",
++    /**
++     * 
++     */
++    PAUSE = "audioPlayerPause",
++    /**
++     * 
++     */
++    AUTOPAUSE = "audioPlayerAutoPause",
++    /**
++     * 
++     */
++    RESUME = "audioPlayerResume",
++}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/player.ts b/node_modules/discord-play/dist/src/player.ts
+new file mode 100644
+index 0000000..70a9e56
+--- /dev/null
++++ b/node_modules/discord-play/dist/src/player.ts
+@@ -0,0 +1,110 @@
++import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, AudioPlayerStatus as Status, createAudioPlayer, createAudioResource, getVoiceConnection, NoSubscriberBehavior, StreamType, VoiceConnection } from '@discordjs/voice';
++import { TypedEmitter } from 'tiny-typed-emitter';
++
++export interface PlayerEvents {
++    /**
++     * The event when the player transitions into buffering state i.e. loading the resource.
++     */
++    audioPlayerBuffer: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player starts playing a resource.
++     */
++    audioPlayerStart: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player finishes playing a resource.
++     */
++    audioPlayerFinish: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player was manually paused.
++     */
++    audioPlayerPause: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player was manually resumed from the paused state.
++     */
++    audioPlayerResume: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player goes into paused state if noSubscriberBehaviour is set to autopaused.
++     */
++    audioPlayerAutoPause: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,
++    /**
++     * The event when the player encounters a error.
++     */
++    error: (error: Error) => void,
++}
++
++export class Player extends TypedEmitter<PlayerEvents> {
++    public player: AudioPlayer = createAudioPlayer({
++        behaviors: {
++            noSubscriber: NoSubscriberBehavior.Stop
++        }
++    });
++    /**
++     * Constructor to create and assign the audio player to the guild voice connection.
++     * @param guildId 
++     * @returns 
++     */
++    public constructor(guildId: string) {
++        super();
++        const connection: VoiceConnection | undefined = getVoiceConnection(guildId);
++        if (!connection) {
++            this.emit('error', new Error("no active connection found"));
++            return;
++        }
++        this.player.on('stateChange', (oldState, newState) => {
++            if (newState.status === Status.Buffering)
++                this.emit('audioPlayerBuffer', oldState, newState);
++            else if (newState.status === Status.Playing && oldState.status === Status.Buffering)
++                this.emit('audioPlayerStart', oldState, newState);
++            else if (newState.status === Status.Idle && oldState.status === Status.Playing)
++                this.emit('audioPlayerFinish', oldState, newState);
++            else if (newState.status === Status.Paused && oldState.status === Status.Playing)
++                this.emit('audioPlayerPause', oldState, newState);
++            else if (newState.status === Status.Playing && oldState.status === Status.Paused)
++                this.emit('audioPlayerResume', oldState, newState);
++            else if (newState.status === Status.AutoPaused)
++                this.emit('audioPlayerAutoPause', oldState, newState);
++            else this.emit('error', new Error(`unknown_state_change (${oldState.status} -> ${newState.status})`));
++        });
++        this.player.on('error', (error) => void this.emit('error', error));
++        try {
++            connection.subscribe(this.player);
++        } catch (error: any) {
++            this.emit('error', error);
++        }
++    }
++    /**
++     * Plays an audio from a local file or url.
++     * @param {string} path The path to the audio file.
++     */
++    public play(path: string): void {
++        try {
++            const resource = createAudioResource(path, { inputType: StreamType.Arbitrary });
++            void this.player.play(resource);
++        } catch (error: any) {
++            this.emit('error', error);
++        }
++    }
++    /**
++     * Stops the audio player and destroys any playing resource.
++     * @returns {boolean}
++     */
++    public stop(): boolean { return this.player.stop(); }
++    /**
++     * Pauses/Unpauses the audio player.
++     * @returns {boolean}
++     */
++    public togglePause(): boolean {
++        if (this.player.state?.status === AudioPlayerStatus.Paused) {
++            return this.player.unpause();
++        } else if (this.player.state?.status === AudioPlayerStatus.Playing) {
++            return this.player.pause(true);
++        } else {
++            return false;
++        }
++    }
++    /**
++     * To check if the underlying resource is playble or not.
++     * @returns {boolean}
++     */
++    public isPlayable(): boolean { return this.player.checkPlayable(); }
++}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/track.ts b/node_modules/discord-play/dist/src/track.ts
+new file mode 100644
+index 0000000..f83bf64
+--- /dev/null
++++ b/node_modules/discord-play/dist/src/track.ts
+@@ -0,0 +1,12 @@
++import { AudioResource, createAudioResource } from '@discordjs/voice';
++import { stream } from 'play-dl';
++
++export function createTrackResource(url: string, cookies: string | undefined): Promise<AudioResource> {
++    return new Promise(async (resolve, reject) => {
++        try {
++            const probe = await stream(url);
++            const resource = createAudioResource(probe.stream, { inputType: probe.type });
++            resolve(resource);
++        } catch (error) { reject(error); }
++    });
++}
+\ No newline at end of file

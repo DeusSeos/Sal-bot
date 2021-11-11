@@ -1,5 +1,5 @@
 import { Client, Intents, Message } from 'discord.js';
-import { DiscordPlay, DisPlayEvent } from 'discord-play';
+import { DiscordPlay, DisPlayEvent, LoopMode } from 'discord-play';
 require("dotenv").config();
 
 const myCookies = "your-cookies-here";
@@ -15,7 +15,7 @@ const client: Client = new Client({
 client.once("ready", () => {
     console.log(`Ready!`);
     client.user!.setStatus('idle');
-    client.user!.setActivity(" happiness", { type: "LISTENING" });
+    client.user!.setActivity("a war is at hand", { type: "LISTENING" });
 
 });
 
@@ -41,7 +41,6 @@ client.on('messageCreate', async (message: Message) => {
         case "join": {
             if (message.member!.voice.channel === null) {
                 message.reply("Error: join a voice channel to use this bot");
-                console.log("No voice channel for member");
                 break;
             };
             DisPlay = new DiscordPlay(message.member!.voice, {
@@ -84,7 +83,6 @@ client.on('messageCreate', async (message: Message) => {
         case "queue":
         case "playlist": {
             let i = 0;
-            console.log(DisPlay.queue);
             if (DisPlay.queue.length === 0) {
                 message.reply("Queue is empty");
                 break;
@@ -101,6 +99,7 @@ client.on('messageCreate', async (message: Message) => {
         case "disconnect":
         case "leave": {
             try {
+                DisPlay.queue = [];
                 DisPlay.stop();
                 message.reply("Left voice channel");
             } catch {
@@ -110,10 +109,27 @@ client.on('messageCreate', async (message: Message) => {
         }
 
         case "loop": {
-            if (DisPlay.toggleSongLoop()) {
-                message.reply(`Looping **${track.title}**`);
-            } else {
-                message.reply("No longer looping.");
+            if (command.args.length == 0) {
+                message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+            }
+            else {
+                switch (command.args[0]) {
+                    case "none":
+                        message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+                        break;
+                    case "track":
+                    case "queue":
+                    case "playlist":
+                    case "p":
+                        message.reply(DisPlay.setLoopMode(LoopMode.QUEUE)[1]);
+                        break;
+                    case "current":
+                    case "single":
+                    case "song":
+                    case "s":
+                        message.reply(DisPlay.setLoopMode(LoopMode.SINGLE)[1]);
+                        break;
+                }
             }
             break;
         }
