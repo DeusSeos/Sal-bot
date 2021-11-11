@@ -1,5 +1,5 @@
 diff --git a/node_modules/discord-play/dist/index.d.ts b/node_modules/discord-play/dist/index.d.ts
-index ecc38c0..c9d479e 100644
+index ecc38c0..2dd5aea 100644
 --- a/node_modules/discord-play/dist/index.d.ts
 +++ b/node_modules/discord-play/dist/index.d.ts
 @@ -12,7 +12,7 @@ interface Options {
@@ -68,11 +68,23 @@ index ecc38c0..c9d479e 100644
       * @param voice The voice channel object
       * @param options Various options to configure DiscordPlay
       */
-@@ -69,11 +90,10 @@ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
+@@ -69,11 +90,22 @@ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
      /**
       *
       */
 -    toggleSongLoop(): boolean;
++    set_pause(pause: boolean): void;
++    /**
++     *
++     */
++    disconnect(): void;
++    /**
++     *
++     */
++    rejoin(): boolean;
++    /**
++     *
++     */
 +    setLoopMode(new_state: LoopMode): [LoopMode, string];
      /**
       * Processes the queue and executes behaviour.
@@ -84,10 +96,10 @@ index ecc38c0..c9d479e 100644
 \ No newline at end of file
 +export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent, LoopMode };
 diff --git a/node_modules/discord-play/dist/index.js b/node_modules/discord-play/dist/index.js
-index c1c3e74..0f96d10 100644
+index c1c3e74..8566f89 100644
 --- a/node_modules/discord-play/dist/index.js
 +++ b/node_modules/discord-play/dist/index.js
-@@ -1,93 +1,194 @@
+@@ -1,93 +1,212 @@
  "use strict";
 -Object.defineProperty(exports, "__esModule", { value: true });
 -exports.DisPlayEvent = exports.DisPlayPlayer = exports.DisPlayConnection = exports.DiscordPlay = void 0;
@@ -232,7 +244,7 @@ index c1c3e74..0f96d10 100644
 -            this.processQueue();
 +        _this.player.on("audioPlayerFinish", function (arg1, arg2) {
 +            _this.emit("audioPlayerFinish", arg1, arg2);
-+            if (_this.loop_state == LoopMode.SINGLE)
++            if (_this.loop_state == LoopMode.NONE)
 +                _this.queue.shift();
 +            if (_this.loop_state == LoopMode.QUEUE)
 +                _this.queue.push(_this.queue.shift());
@@ -312,6 +324,24 @@ index c1c3e74..0f96d10 100644
 -    toggleSongLoop() {
 -        return this.songLoop = !this.songLoop;
 -    }
++    DiscordPlay.prototype.set_pause = function (pause) {
++        pause ? this.player.player.pause(true) : this.player.player.unpause();
++    };
++    /**
++     *
++     */
++    DiscordPlay.prototype.disconnect = function () {
++        this.connection.connection.disconnect();
++    };
++    /**
++     *
++     */
++    DiscordPlay.prototype.rejoin = function () {
++        return this.connection.connection.rejoin();
++    };
++    /**
++     *
++     */
 +    DiscordPlay.prototype.setLoopMode = function (new_state) {
 +        if (this.loop_state == LoopMode.NONE)
 +            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
@@ -341,7 +371,7 @@ index c1c3e74..0f96d10 100644
          if (!this.queue.length) {
              switch (this.options.emptyQueueBehaviour) {
                  case "CONNECTION_KEEP": break;
-@@ -100,9 +201,9 @@ class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
+@@ -100,9 +219,9 @@ class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
          if (this.player.player.state.status !== voice_1.AudioPlayerStatus.Idle)
              return;
          (0, track_js_1.createTrackResource)(this.queue[0].url, this.cookies)
@@ -357,20 +387,20 @@ index c1c3e74..0f96d10 100644
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/index.js.map b/node_modules/discord-play/dist/index.js.map
-index cea5869..3d0609b 100644
+index cea5869..8685357 100644
 --- a/node_modules/discord-play/dist/index.js.map
 +++ b/node_modules/discord-play/dist/index.js.map
 @@ -1 +1 @@
 -{"version":3,"file":"index.js","sourceRoot":"","sources":["../index.ts"],"names":[],"mappings":"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","sourcesContent":["import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice';\nimport { search, stream, stream_from_info, video_basic_info, video_info, yt_validate } from 'play-dl';\nimport { Video } from 'play-dl/dist/YouTube/classes/Video';\nimport { TypedEmitter } from 'tiny-typed-emitter';\nimport { Connection, ConnectionEvents } from './src/connection.js';\nimport { DisPlayEvent } from './src/eventEnums.js';\nimport { Player, PlayerEvents } from './src/player.js';\nimport { createTrackResource } from './src/track.js';\n\ninterface Options {\n    /**\n     * (Optional) The cookies to play age-restricted videos.\n     */\n    cookies?: string,\n    /**\n     * Sets the quality of streams.\n     */\n    quality: \"LOWEST\" | \"MEDIUM\" | \"HIGHEST\",\n    /**\n     * Defines the behaviour of what should happen after the queue array goes empty.\n     * \n     * CONNECTION_KEEP - Continues to remain in the voice channel.\n     * \n     * CONNECTION_DESTROY - Leaves the voice channel.\n     */\n    emptyQueueBehaviour: \"CONNECTION_KEEP\" | \"CONNECTION_DESTROY\"\n}\n\ninterface Enqueue {\n    /**\n     * The video title for the track.\n     */\n    title: string,\n    /**\n     * The video url for the track.\n     */\n    url: string,\n    /**\n     * The name of channel of the track video.\n     */\n    artist: string\n}\n\ninterface DiscordPlayEvents extends ConnectionEvents, PlayerEvents { }\n\nexport class DiscordPlay extends TypedEmitter<DiscordPlayEvents>{\n    public connection: Connection;\n    public player: Player;\n    private cookies: string | undefined;\n    public queue: Enqueue[] = [];\n    public options: Options;\n    private songLoop = false;\n    private queueLoop = false;\n    /**\n     * Initializes the Connection, Player.\n     * Re-exports all the events to be directly emitted from here,\n     * and not from the modules itself, for easier event handling.\n     * \n     * @param voice The voice channel object\n     * @param options Various options to configure DiscordPlay\n     */\n    constructor(voice: any, options: Options) {\n        super();\n        this.options = options;\n        this.connection = new Connection(voice);\n        this.player = new Player(voice.guild.id);\n        this.cookies = options?.cookies;\n        [\"voiceConnectionCreate\", \"voiceConnectionMove\", \"voiceConnectionKick\", \"voiceConnectionDestroy\", \"selfDeafen\", \"selfMute\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        [\"audioPlayerBuffer\", \"audioPlayerStart\", \"audioPlayerPause\", \"audioPlayerResume\", \"audioPlayerAutoPause\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        this.player.on(\"audioPlayerFinish\", (arg1, arg2) => {\n            this.emit(\"audioPlayerFinish\", arg1, arg2);\n            if (!this.songLoop) this.queue.shift();\n            this.processQueue();\n        });\n    }\n    /**\n     * Enqueues the track from the args provided.\n     * @param args The terms to be searched. (Can be terms or a youtube url)\n     */\n    public async enqueue(args: string): Promise<Enqueue> {\n        let details;\n        switch (yt_validate(args)) {\n            case \"video\":\n                details = (await video_basic_info(args, this.cookies)).video_details;\n                break;\n            default:\n                details = (await search(args, { limit: 1 }))![0];\n                break;\n        }\n        // @ts-ignore\n        const track: Enqueue = { title: details.title, url: details.url!, artist: details.channel?.name };\n        this.queue.push(track);\n        this.processQueue();\n        return track;\n    }\n    /**\n     * \n     */\n    public skip(): void {\n        this.player.stop();\n    }\n    /**\n     * \n     */\n    public stop(): void {\n        this.player.stop();\n        this.connection.destroy();\n    }\n    /**\n     * \n     */\n    public toggleSongLoop(): boolean {\n        return this.songLoop = !this.songLoop;\n    }\n    /**\n     * Processes the queue and executes behaviour.\n     */\n    private processQueue(): void {\n        if (!this.queue.length) {\n            switch (this.options.emptyQueueBehaviour) {\n                case \"CONNECTION_KEEP\": break;\n                case \"CONNECTION_DESTROY\": this.connection.destroy(); break;\n            }\n            return;\n        }\n        if (this.player.player.state.status !== AudioPlayerStatus.Idle) return;\n        createTrackResource(this.queue[0].url, this.cookies)\n            .then(resource => void this.player.player.play(resource))\n            .catch(error => this.emit('error', error));\n    }\n}\n\nexport { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent };"]}
 \ No newline at end of file
-+{"version":3,"file":"index.js","sourceRoot":"","sources":["index.ts"],"names":[],"mappings":"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"}
++{"version":3,"file":"index.js","sourceRoot":"","sources":["index.ts"],"names":[],"mappings":"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"}
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/index.ts b/node_modules/discord-play/dist/index.ts
 new file mode 100644
-index 0000000..5d1caa2
+index 0000000..9c01ae3
 --- /dev/null
 +++ b/node_modules/discord-play/dist/index.ts
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,214 @@
 +import { AudioPlayerStatus } from '@discordjs/voice';
 +import { search, video_basic_info, yt_validate } from 'play-dl';
 +import { TypedEmitter } from 'tiny-typed-emitter';
@@ -449,6 +479,7 @@ index 0000000..5d1caa2
 +    public queue: Enqueue[] = [];
 +    public options: Options;
 +    private loop_state = LoopMode.NONE;
++    private has_connected = false;
 +    /** 
 +     * @param voice The voice channel object
 +     * @param options Various options to configure DiscordPlay
@@ -469,10 +500,11 @@ index 0000000..5d1caa2
 +        });
 +        this.player.on("audioPlayerFinish", (arg1, arg2) => {
 +            this.emit("audioPlayerFinish", arg1, arg2);
-+            if (this.loop_state == LoopMode.SINGLE) this.queue.shift();
++            if (this.loop_state == LoopMode.NONE) this.queue.shift();
 +            if (this.loop_state == LoopMode.QUEUE) this.queue.push(this.queue.shift());
 +            this.processQueue();
 +        });
++        this.has_connected = true;
 +    }
 +    /**
 +     * Enqueues the track from the args provided.
@@ -510,6 +542,40 @@ index 0000000..5d1caa2
 +    /**
 +     * 
 +     */
++    public set_pause(pause: boolean): void {
++        pause ? this.player.player.pause(true) : this.player.player.unpause();
++    }
++    /**
++     * 
++     */
++    public disconnect(): void {
++        this.connection.connection.disconnect();
++    }
++    /**
++     * 
++     */
++    public rejoin(voice: any): boolean {
++        this.connection = new Connection(voice);
++        this.player = new Player(voice.guild.id);
++        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        this.player.on("audioPlayerFinish", (arg1, arg2) => {
++            this.emit("audioPlayerFinish", arg1, arg2);
++            if (this.loop_state == LoopMode.NONE) this.queue.shift();
++            if (this.loop_state == LoopMode.QUEUE) this.queue.push(this.queue.shift());
++            this.processQueue();
++        });
++        return true;
++    }
++    /**
++     * 
++     */
 +    public setLoopMode(new_state: LoopMode): [LoopMode, string] {
 +        if (this.loop_state == LoopMode.NONE)
 +            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
@@ -533,7 +599,7 @@ index 0000000..5d1caa2
 +    /**
 +     * Processes the queue and executes behaviour.
 +     */
-+    private processQueue(): void {
++    public processQueue(): void {
 +        if (!this.queue.length) {
 +            switch (this.options.emptyQueueBehaviour) {
 +                case "CONNECTION_KEEP": break;
@@ -549,6 +615,264 @@ index 0000000..5d1caa2
 +}
 +
 +export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent , LoopMode};
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/connection.d.ts b/node_modules/discord-play/dist/src/connection.d.ts
+index 672e787..bce70f4 100644
+--- a/node_modules/discord-play/dist/src/connection.d.ts
++++ b/node_modules/discord-play/dist/src/connection.d.ts
+@@ -40,4 +40,3 @@ export declare class Connection extends TypedEmitter<ConnectionEvents> {
+     destroy(): Promise<void>;
+     getDependancies(): string;
+ }
+-//# sourceMappingURL=connection.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/connection.js b/node_modules/discord-play/dist/src/connection.js
+index b1bf76d..7a0baad 100644
+--- a/node_modules/discord-play/dist/src/connection.js
++++ b/node_modules/discord-play/dist/src/connection.js
+@@ -1,77 +1,169 @@
+ "use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
++var __extends = (this && this.__extends) || (function () {
++    var extendStatics = function (d, b) {
++        extendStatics = Object.setPrototypeOf ||
++            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
++            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
++        return extendStatics(d, b);
++    };
++    return function (d, b) {
++        if (typeof b !== "function" && b !== null)
++            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
++        extendStatics(d, b);
++        function __() { this.constructor = d; }
++        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
++    };
++})();
++var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
++    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
++    return new (P || (P = Promise))(function (resolve, reject) {
++        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
++        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
++        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
++        step((generator = generator.apply(thisArg, _arguments || [])).next());
++    });
++};
++var __generator = (this && this.__generator) || function (thisArg, body) {
++    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
++    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
++    function verb(n) { return function (v) { return step([n, v]); }; }
++    function step(op) {
++        if (f) throw new TypeError("Generator is already executing.");
++        while (_) try {
++            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
++            if (y = 0, t) op = [op[0] & 2, t.value];
++            switch (op[0]) {
++                case 0: case 1: t = op; break;
++                case 4: _.label++; return { value: op[1], done: false };
++                case 5: _.label++; y = op[1]; op = [0]; continue;
++                case 7: op = _.ops.pop(); _.trys.pop(); continue;
++                default:
++                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
++                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
++                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
++                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
++                    if (t[2]) _.ops.pop();
++                    _.trys.pop(); continue;
++            }
++            op = body.call(thisArg, _);
++        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
++        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
++    }
++};
++exports.__esModule = true;
+ exports.Connection = void 0;
+-const voice_1 = require("@discordjs/voice");
+-const tiny_typed_emitter_1 = require("tiny-typed-emitter");
+-const util_1 = require("util");
+-const wait = (0, util_1.promisify)(setTimeout);
+-class Connection extends tiny_typed_emitter_1.TypedEmitter {
+-    constructor(voice) {
+-        super();
+-        this.readyLock = false;
+-        this.connection = (0, voice_1.joinVoiceChannel)({ channelId: voice.channel.id, guildId: voice.guild.id, adapterCreator: voice.guild.voiceAdapterCreator });
+-        this.oldVoiceID = this.connection.joinConfig.channelId;
+-        setImmediate(() => this.emit('voiceConnectionCreate', this.connection.joinConfig.channelId));
+-        this.connection.on('stateChange', async (oldState, newState) => {
+-            if (newState.status === voice_1.VoiceConnectionStatus.Disconnected) {
+-                if (newState.reason === voice_1.VoiceConnectionDisconnectReason.WebSocketClose && newState.closeCode === 4014) {
+-                    try {
+-                        await (0, voice_1.entersState)(this.connection, voice_1.VoiceConnectionStatus.Connecting, 3000);
++var voice_1 = require("@discordjs/voice");
++var tiny_typed_emitter_1 = require("tiny-typed-emitter");
++var util_1 = require("util");
++var wait = (0, util_1.promisify)(setTimeout);
++var Connection = /** @class */ (function (_super) {
++    __extends(Connection, _super);
++    function Connection(voice) {
++        var _this = _super.call(this) || this;
++        _this.readyLock = false;
++        _this.connection = (0, voice_1.joinVoiceChannel)({ channelId: voice.channel.id, guildId: voice.guild.id, adapterCreator: voice.guild.voiceAdapterCreator });
++        _this.oldVoiceID = _this.connection.joinConfig.channelId;
++        setImmediate(function () { return _this.emit('voiceConnectionCreate', _this.connection.joinConfig.channelId); });
++        _this.connection.on('stateChange', function (oldState, newState) { return __awaiter(_this, void 0, void 0, function () {
++            var _a, _b;
++            return __generator(this, function (_c) {
++                switch (_c.label) {
++                    case 0:
++                        if (!(newState.status === voice_1.VoiceConnectionStatus.Disconnected)) return [3 /*break*/, 9];
++                        if (!(newState.reason === voice_1.VoiceConnectionDisconnectReason.WebSocketClose && newState.closeCode === 4014)) return [3 /*break*/, 5];
++                        _c.label = 1;
++                    case 1:
++                        _c.trys.push([1, 3, , 4]);
++                        return [4 /*yield*/, (0, voice_1.entersState)(this.connection, voice_1.VoiceConnectionStatus.Connecting, 3000)];
++                    case 2:
++                        _c.sent();
+                         this.emit('voiceConnectionMove', this.oldVoiceID, this.connection.joinConfig.channelId);
+                         this.oldVoiceID = this.connection.joinConfig.channelId;
+-                    }
+-                    catch {
++                        return [3 /*break*/, 4];
++                    case 3:
++                        _a = _c.sent();
+                         this.connection.destroy();
+                         this.emit('voiceConnectionKick', this.connection.joinConfig.channelId);
+-                    }
+-                }
+-                else if (this.connection.rejoinAttempts < 5) {
+-                    await wait((this.connection.rejoinAttempts + 1) * 3000);
+-                    this.connection.rejoin();
+-                }
+-                else {
+-                    this.connection.destroy();
+-                    this.emit('error', new Error("connection_error"));
+-                }
+-            }
+-            else if (newState.status === voice_1.VoiceConnectionStatus.Destroyed) {
+-                this.emit('voiceConnectionDestroy', this.connection.joinConfig.channelId);
+-            }
+-            else if (!this.readyLock && (newState.status === voice_1.VoiceConnectionStatus.Connecting || newState.status === voice_1.VoiceConnectionStatus.Signalling)) {
+-                this.readyLock = true;
+-                try {
+-                    await (0, voice_1.entersState)(this.connection, voice_1.VoiceConnectionStatus.Ready, 20000);
+-                }
+-                catch {
+-                    if (this.connection.state.status !== voice_1.VoiceConnectionStatus.Destroyed) {
++                        return [3 /*break*/, 4];
++                    case 4: return [3 /*break*/, 8];
++                    case 5:
++                        if (!(this.connection.rejoinAttempts < 5)) return [3 /*break*/, 7];
++                        return [4 /*yield*/, wait((this.connection.rejoinAttempts + 1) * 3000)];
++                    case 6:
++                        _c.sent();
++                        this.connection.rejoin();
++                        return [3 /*break*/, 8];
++                    case 7:
+                         this.connection.destroy();
+                         this.emit('error', new Error("connection_error"));
+-                    }
+-                }
+-                finally {
+-                    this.readyLock = false;
++                        _c.label = 8;
++                    case 8: return [3 /*break*/, 15];
++                    case 9:
++                        if (!(newState.status === voice_1.VoiceConnectionStatus.Destroyed)) return [3 /*break*/, 10];
++                        this.emit('voiceConnectionDestroy', this.connection.joinConfig.channelId);
++                        return [3 /*break*/, 15];
++                    case 10:
++                        if (!(!this.readyLock && (newState.status === voice_1.VoiceConnectionStatus.Connecting || newState.status === voice_1.VoiceConnectionStatus.Signalling))) return [3 /*break*/, 15];
++                        this.readyLock = true;
++                        _c.label = 11;
++                    case 11:
++                        _c.trys.push([11, 13, 14, 15]);
++                        return [4 /*yield*/, (0, voice_1.entersState)(this.connection, voice_1.VoiceConnectionStatus.Ready, 20000)];
++                    case 12:
++                        _c.sent();
++                        return [3 /*break*/, 15];
++                    case 13:
++                        _b = _c.sent();
++                        if (this.connection.state.status !== voice_1.VoiceConnectionStatus.Destroyed) {
++                            this.connection.destroy();
++                            this.emit('error', new Error("connection_error"));
++                        }
++                        return [3 /*break*/, 15];
++                    case 14:
++                        this.readyLock = false;
++                        return [7 /*endfinally*/];
++                    case 15: return [2 /*return*/];
+                 }
+-            }
+-        });
+-    }
+-    async toggleDeafen() {
+-        const flag = this.connection.joinConfig.selfDeaf;
+-        this.connection.joinConfig.selfDeaf = !flag;
+-        this.connection.rejoin(this.connection.joinConfig);
+-        this.emit('selfDeafen', !flag);
+-    }
+-    async toggleMute() {
+-        const flag = this.connection.joinConfig.selfMute;
+-        this.connection.joinConfig.selfMute = !flag;
+-        this.connection.rejoin(this.connection.joinConfig);
+-        this.emit('selfMute', !flag);
+-    }
+-    async destroy() {
+-        this.connection.destroy();
++            });
++        }); });
++        return _this;
+     }
+-    getDependancies() {
++    Connection.prototype.toggleDeafen = function () {
++        return __awaiter(this, void 0, void 0, function () {
++            var flag;
++            return __generator(this, function (_a) {
++                flag = this.connection.joinConfig.selfDeaf;
++                this.connection.joinConfig.selfDeaf = !flag;
++                this.connection.rejoin(this.connection.joinConfig);
++                this.emit('selfDeafen', !flag);
++                return [2 /*return*/];
++            });
++        });
++    };
++    Connection.prototype.toggleMute = function () {
++        return __awaiter(this, void 0, void 0, function () {
++            var flag;
++            return __generator(this, function (_a) {
++                flag = this.connection.joinConfig.selfMute;
++                this.connection.joinConfig.selfMute = !flag;
++                this.connection.rejoin(this.connection.joinConfig);
++                this.emit('selfMute', !flag);
++                return [2 /*return*/];
++            });
++        });
++    };
++    Connection.prototype.destroy = function () {
++        return __awaiter(this, void 0, void 0, function () {
++            return __generator(this, function (_a) {
++                this.connection.destroy();
++                return [2 /*return*/];
++            });
++        });
++    };
++    Connection.prototype.getDependancies = function () {
+         return (0, voice_1.generateDependencyReport)();
+-    }
+-}
++    };
++    return Connection;
++}(tiny_typed_emitter_1.TypedEmitter));
+ exports.Connection = Connection;
+ //# sourceMappingURL=connection.js.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/connection.js.map b/node_modules/discord-play/dist/src/connection.js.map
+index 8c025d4..fa23365 100644
+--- a/node_modules/discord-play/dist/src/connection.js.map
++++ b/node_modules/discord-play/dist/src/connection.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"connection.js","sourceRoot":"","sources":["../../src/connection.ts"],"names":[],"mappings":";;;AAAA,4CAAoK;AACpK,2DAAkD;AAClD,+BAAiC;AACjC,MAAM,IAAI,GAAG,IAAA,gBAAS,EAAC,UAAU,CAAC,CAAC;AAiCnC,MAAa,UAAW,SAAQ,iCAA8B;IAI1D,YAAY,KAAU;QAClB,KAAK,EAAE,CAAC;QAHL,cAAS,GAAG,KAAK,CAAC;QAIrB,IAAI,CAAC,UAAU,GAAG,IAAA,wBAAgB,EAAC,EAAE,SAAS,EAAE,KAAK,CAAC,OAAO,CAAC,EAAE,EAAE,OAAO,EAAE,KAAK,CAAC,KAAK,CAAC,EAAE,EAAE,cAAc,EAAE,KAAK,CAAC,KAAK,CAAC,mBAAmB,EAAE,CAAC,CAAC;QAC9I,IAAI,CAAC,UAAU,GAAG,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC;QACvD,YAAY,CAAC,GAAG,EAAE,CAAC,IAAI,CAAC,IAAI,CAAC,uBAAuB,EAAE,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC,CAAC,CAAC;QAC7F,IAAI,CAAC,UAAU,CAAC,EAAE,CAAC,aAAa,EAAE,KAAK,EAAE,QAAQ,EAAE,QAAQ,EAAE,EAAE;YAC3D,IAAI,QAAQ,CAAC,MAAM,KAAK,6BAAqB,CAAC,YAAY,EAAE;gBACxD,IAAI,QAAQ,CAAC,MAAM,KAAK,uCAA+B,CAAC,cAAc,IAAI,QAAQ,CAAC,SAAS,KAAK,IAAI,EAAE;oBACnG,IAAI;wBACA,MAAM,IAAA,mBAAW,EAAC,IAAI,CAAC,UAAU,EAAE,6BAAqB,CAAC,UAAU,EAAE,IAAK,CAAC,CAAC;wBAC5E,IAAI,CAAC,IAAI,CAAC,qBAAqB,EAAE,IAAI,CAAC,UAAU,EAAE,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC,CAAC;wBACxF,IAAI,CAAC,UAAU,GAAG,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC;qBAC1D;oBAAC,MAAM;wBACJ,IAAI,CAAC,UAAU,CAAC,OAAO,EAAE,CAAC;wBAC1B,IAAI,CAAC,IAAI,CAAC,qBAAqB,EAAE,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC,CAAC;qBAC1E;iBACJ;qBAAM,IAAI,IAAI,CAAC,UAAU,CAAC,cAAc,GAAG,CAAC,EAAE;oBAC3C,MAAM,IAAI,CAAC,CAAC,IAAI,CAAC,UAAU,CAAC,cAAc,GAAG,CAAC,CAAC,GAAG,IAAK,CAAC,CAAC;oBACzD,IAAI,CAAC,UAAU,CAAC,MAAM,EAAE,CAAC;iBAC5B;qBAAM;oBACH,IAAI,CAAC,UAAU,CAAC,OAAO,EAAE,CAAC;oBAC1B,IAAI,CAAC,IAAI,CAAC,OAAO,EAAE,IAAI,KAAK,CAAC,kBAAkB,CAAC,CAAC,CAAC;iBACrD;aACJ;iBAAM,IAAI,QAAQ,CAAC,MAAM,KAAK,6BAAqB,CAAC,SAAS,EAAE;gBAC5D,IAAI,CAAC,IAAI,CAAC,wBAAwB,EAAE,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,SAAS,CAAC,CAAC;aAC7E;iBAAM,IAAI,CAAC,IAAI,CAAC,SAAS,IAAI,CAAC,QAAQ,CAAC,MAAM,KAAK,6BAAqB,CAAC,UAAU,IAAI,QAAQ,CAAC,MAAM,KAAK,6BAAqB,CAAC,UAAU,CAAC,EAAE;gBAC1I,IAAI,CAAC,SAAS,GAAG,IAAI,CAAC;gBACtB,IAAI;oBACA,MAAM,IAAA,mBAAW,EAAC,IAAI,CAAC,UAAU,EAAE,6BAAqB,CAAC,KAAK,EAAE,KAAM,CAAC,CAAC;iBAC3E;gBAAC,MAAM;oBACJ,IAAI,IAAI,CAAC,UAAU,CAAC,KAAK,CAAC,MAAM,KAAK,6BAAqB,CAAC,SAAS,EAAE;wBAClE,IAAI,CAAC,UAAU,CAAC,OAAO,EAAE,CAAC;wBAC1B,IAAI,CAAC,IAAI,CAAC,OAAO,EAAE,IAAI,KAAK,CAAC,kBAAkB,CAAC,CAAC,CAAC;qBACrD;iBACJ;wBAAS;oBACN,IAAI,CAAC,SAAS,GAAG,KAAK,CAAC;iBAC1B;aACJ;QACL,CAAC,CAAC,CAAC;IACP,CAAC;IACM,KAAK,CAAC,YAAY;QACrB,MAAM,IAAI,GAAG,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,QAAQ,CAAC;QACjD,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,QAAQ,GAAG,CAAC,IAAI,CAAA;QAC3C,IAAI,CAAC,UAAU,CAAC,MAAM,CAAC,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,CAAC;QACnD,IAAI,CAAC,IAAI,CAAC,YAAY,EAAE,CAAC,IAAI,CAAC,CAAC;IACnC,CAAC;IACM,KAAK,CAAC,UAAU;QACnB,MAAM,IAAI,GAAG,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,QAAQ,CAAC;QACjD,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,QAAQ,GAAG,CAAC,IAAI,CAAC;QAC5C,IAAI,CAAC,UAAU,CAAC,MAAM,CAAC,IAAI,CAAC,UAAU,CAAC,UAAU,CAAC,CAAC;QACnD,IAAI,CAAC,IAAI,CAAC,UAAU,EAAE,CAAC,IAAI,CAAC,CAAC;IACjC,CAAC;IACM,KAAK,CAAC,OAAO;QAChB,IAAI,CAAC,UAAU,CAAC,OAAO,EAAE,CAAC;IAC9B,CAAC;IACM,eAAe;QAClB,OAAO,IAAA,gCAAwB,GAAE,CAAC;IACtC,CAAC;CACJ;AA9DD,gCA8DC","sourcesContent":["import { entersState, generateDependencyReport, joinVoiceChannel, VoiceConnection, VoiceConnectionDisconnectReason, VoiceConnectionStatus } from '@discordjs/voice';\nimport { TypedEmitter } from 'tiny-typed-emitter';\nimport { promisify } from 'util';\nconst wait = promisify(setTimeout);\n\nexport interface ConnectionEvents {\n    /**\n     * \n     */\n    voiceConnectionCreate: (voiceId: string | null) => void,\n    /**\n     * \n     */\n    voiceConnectionMove: (oldVoiceId: string | null, newVoiceId: string | null) => void,\n    /**\n     * \n     */\n    voiceConnectionKick: (voiceId: string | null) => void,\n    /**\n     * \n     */\n    voiceConnectionDestroy: (voidId: string | null) => void,\n    /**\n     * \n     */\n    selfDeafen: (flag: boolean) => void,\n    /**\n     * \n     */\n    selfMute: (flag: boolean) => void,\n    /**\n     * \n     */\n    error: (error: Error) => void,\n}\n\nexport class Connection extends TypedEmitter<ConnectionEvents> {\n    public connection: VoiceConnection;\n    public readyLock = false;\n    private oldVoiceID: string | null;\n    constructor(voice: any) {\n        super();\n        this.connection = joinVoiceChannel({ channelId: voice.channel.id, guildId: voice.guild.id, adapterCreator: voice.guild.voiceAdapterCreator });\n        this.oldVoiceID = this.connection.joinConfig.channelId;\n        setImmediate(() => this.emit('voiceConnectionCreate', this.connection.joinConfig.channelId));\n        this.connection.on('stateChange', async (oldState, newState) => {\n            if (newState.status === VoiceConnectionStatus.Disconnected) {\n                if (newState.reason === VoiceConnectionDisconnectReason.WebSocketClose && newState.closeCode === 4014) {\n                    try {\n                        await entersState(this.connection, VoiceConnectionStatus.Connecting, 3_000);\n                        this.emit('voiceConnectionMove', this.oldVoiceID, this.connection.joinConfig.channelId);\n                        this.oldVoiceID = this.connection.joinConfig.channelId;\n                    } catch {\n                        this.connection.destroy();\n                        this.emit('voiceConnectionKick', this.connection.joinConfig.channelId);\n                    }\n                } else if (this.connection.rejoinAttempts < 5) {\n                    await wait((this.connection.rejoinAttempts + 1) * 3_000);\n                    this.connection.rejoin();\n                } else {\n                    this.connection.destroy();\n                    this.emit('error', new Error(\"connection_error\"));\n                }\n            } else if (newState.status === VoiceConnectionStatus.Destroyed) {\n                this.emit('voiceConnectionDestroy', this.connection.joinConfig.channelId);\n            } else if (!this.readyLock && (newState.status === VoiceConnectionStatus.Connecting || newState.status === VoiceConnectionStatus.Signalling)) {\n                this.readyLock = true;\n                try {\n                    await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);\n                } catch {\n                    if (this.connection.state.status !== VoiceConnectionStatus.Destroyed) {\n                        this.connection.destroy();\n                        this.emit('error', new Error(\"connection_error\"));\n                    }\n                } finally {\n                    this.readyLock = false;\n                }\n            }\n        });\n    }\n    public async toggleDeafen() {\n        const flag = this.connection.joinConfig.selfDeaf;\n        this.connection.joinConfig.selfDeaf = !flag\n        this.connection.rejoin(this.connection.joinConfig);\n        this.emit('selfDeafen', !flag);\n    }\n    public async toggleMute() {\n        const flag = this.connection.joinConfig.selfMute;\n        this.connection.joinConfig.selfMute = !flag;\n        this.connection.rejoin(this.connection.joinConfig);\n        this.emit('selfMute', !flag);\n    }\n    public async destroy() {\n        this.connection.destroy();\n    }\n    public getDependancies() {\n        return generateDependencyReport();\n    }\n}"]}
+\ No newline at end of file
++{"version":3,"file":"connection.js","sourceRoot":"","sources":["connection.ts"],"names":[],"mappings":"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"}
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/src/connection.ts b/node_modules/discord-play/dist/src/connection.ts
 new file mode 100644
@@ -656,6 +980,36 @@ index 0000000..a895674
 +    }
 +}
 \ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/eventEnums.d.ts b/node_modules/discord-play/dist/src/eventEnums.d.ts
+index 5960f76..964cc2b 100644
+--- a/node_modules/discord-play/dist/src/eventEnums.d.ts
++++ b/node_modules/discord-play/dist/src/eventEnums.d.ts
+@@ -48,4 +48,3 @@ export declare enum DisPlayEvent {
+      */
+     RESUME = "audioPlayerResume"
+ }
+-//# sourceMappingURL=eventEnums.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/eventEnums.js b/node_modules/discord-play/dist/src/eventEnums.js
+index 51e7096..594eff6 100644
+--- a/node_modules/discord-play/dist/src/eventEnums.js
++++ b/node_modules/discord-play/dist/src/eventEnums.js
+@@ -1,5 +1,5 @@
+ "use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
++exports.__esModule = true;
+ exports.DisPlayEvent = void 0;
+ var DisPlayEvent;
+ (function (DisPlayEvent) {
+diff --git a/node_modules/discord-play/dist/src/eventEnums.js.map b/node_modules/discord-play/dist/src/eventEnums.js.map
+index fe0381d..76272e3 100644
+--- a/node_modules/discord-play/dist/src/eventEnums.js.map
++++ b/node_modules/discord-play/dist/src/eventEnums.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"eventEnums.js","sourceRoot":"","sources":["../../src/eventEnums.ts"],"names":[],"mappings":";;;AAAA,IAAY,YAiDX;AAjDD,WAAY,YAAY;IACpB;;OAEG;IACH,oDAAoC,CAAA;IACpC;;OAEG;IACH,sDAAsC,CAAA;IACtC;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,0CAA0B,CAAA;IAC1B;;OAEG;IACH,sCAAsB,CAAA;IACtB;;OAEG;IACH,+CAA+B,CAAA;IAC/B;;OAEG;IACH,4CAA4B,CAAA;IAC5B;;OAEG;IACH,4CAA4B,CAAA;IAC5B;;OAEG;IACH,0CAA0B,CAAA;IAC1B;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,4CAA4B,CAAA;AAChC,CAAC,EAjDW,YAAY,GAAZ,oBAAY,KAAZ,oBAAY,QAiDvB","sourcesContent":["export enum DisPlayEvent {\n    /**\n     * The event when voice connection has been created.\n     */\n    VOICE_JOIN = \"voiceConnectionCreate\",\n    /**\n     * The event when voice connection has been destroyed (i.e. bot left the voice channel).\n     */\n    VOICE_LEAVE = \"voiceConnectionDestroy\",\n    /**\n     * The event when bot is moved from one voice channel to another.\n     */\n    VOICE_MOVE = \"voiceConnectionMove\",\n    /**\n     * The event when bot was forcibly kicked from voice channel.\n     */\n    VOICE_KICK = \"voiceConnectionKick\",\n    /**\n     * The event when `selfDeafen()` was used.\n     */\n    SELF_DEAFEN = \"selfDeafen\",\n    /**\n     * The event when `selfMute()` was used.\n     */\n    SELF_MUTE = \"selfMute\",\n    /**\n     * \n     */\n    BUFFERING = \"audioPlayerBuffer\",\n    /**\n     * \n     */\n    PLAYING = \"audioPlayerStart\",\n    /**\n     * \n     */\n    FINISH = \"audioPlayerFinish\",\n    /**\n     * \n     */\n    PAUSE = \"audioPlayerPause\",\n    /**\n     * \n     */\n    AUTOPAUSE = \"audioPlayerAutoPause\",\n    /**\n     * \n     */\n    RESUME = \"audioPlayerResume\",\n}"]}
+\ No newline at end of file
++{"version":3,"file":"eventEnums.js","sourceRoot":"","sources":["eventEnums.ts"],"names":[],"mappings":";;;AAAA,IAAY,YAiDX;AAjDD,WAAY,YAAY;IACpB;;OAEG;IACH,oDAAoC,CAAA;IACpC;;OAEG;IACH,sDAAsC,CAAA;IACtC;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,0CAA0B,CAAA;IAC1B;;OAEG;IACH,sCAAsB,CAAA;IACtB;;OAEG;IACH,+CAA+B,CAAA;IAC/B;;OAEG;IACH,4CAA4B,CAAA;IAC5B;;OAEG;IACH,4CAA4B,CAAA;IAC5B;;OAEG;IACH,0CAA0B,CAAA;IAC1B;;OAEG;IACH,kDAAkC,CAAA;IAClC;;OAEG;IACH,4CAA4B,CAAA;AAChC,CAAC,EAjDW,YAAY,GAAZ,oBAAY,KAAZ,oBAAY,QAiDvB"}
+\ No newline at end of file
 diff --git a/node_modules/discord-play/dist/src/eventEnums.ts b/node_modules/discord-play/dist/src/eventEnums.ts
 new file mode 100644
 index 0000000..2a009cd
@@ -712,6 +1066,164 @@ index 0000000..2a009cd
 +     */
 +    RESUME = "audioPlayerResume",
 +}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/player.d.ts b/node_modules/discord-play/dist/src/player.d.ts
+index 44c5c69..9eed65d 100644
+--- a/node_modules/discord-play/dist/src/player.d.ts
++++ b/node_modules/discord-play/dist/src/player.d.ts
+@@ -59,4 +59,3 @@ export declare class Player extends TypedEmitter<PlayerEvents> {
+      */
+     isPlayable(): boolean;
+ }
+-//# sourceMappingURL=player.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/player.js b/node_modules/discord-play/dist/src/player.js
+index b86dfbf..ae7c5b5 100644
+--- a/node_modules/discord-play/dist/src/player.js
++++ b/node_modules/discord-play/dist/src/player.js
+@@ -1,73 +1,90 @@
+ "use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
++var __extends = (this && this.__extends) || (function () {
++    var extendStatics = function (d, b) {
++        extendStatics = Object.setPrototypeOf ||
++            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
++            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
++        return extendStatics(d, b);
++    };
++    return function (d, b) {
++        if (typeof b !== "function" && b !== null)
++            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
++        extendStatics(d, b);
++        function __() { this.constructor = d; }
++        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
++    };
++})();
++exports.__esModule = true;
+ exports.Player = void 0;
+-const voice_1 = require("@discordjs/voice");
+-const tiny_typed_emitter_1 = require("tiny-typed-emitter");
+-class Player extends tiny_typed_emitter_1.TypedEmitter {
++var voice_1 = require("@discordjs/voice");
++var tiny_typed_emitter_1 = require("tiny-typed-emitter");
++var Player = /** @class */ (function (_super) {
++    __extends(Player, _super);
+     /**
+      * Constructor to create and assign the audio player to the guild voice connection.
+      * @param guildId
+      * @returns
+      */
+-    constructor(guildId) {
+-        super();
+-        this.player = (0, voice_1.createAudioPlayer)({
++    function Player(guildId) {
++        var _this = _super.call(this) || this;
++        _this.player = (0, voice_1.createAudioPlayer)({
+             behaviors: {
+                 noSubscriber: voice_1.NoSubscriberBehavior.Stop
+             }
+         });
+-        const connection = (0, voice_1.getVoiceConnection)(guildId);
++        var connection = (0, voice_1.getVoiceConnection)(guildId);
+         if (!connection) {
+-            this.emit('error', new Error("no active connection found"));
+-            return;
++            _this.emit('error', new Error("no active connection found"));
++            return _this;
+         }
+-        this.player.on('stateChange', (oldState, newState) => {
++        _this.player.on('stateChange', function (oldState, newState) {
+             if (newState.status === voice_1.AudioPlayerStatus.Buffering)
+-                this.emit('audioPlayerBuffer', oldState, newState);
++                _this.emit('audioPlayerBuffer', oldState, newState);
+             else if (newState.status === voice_1.AudioPlayerStatus.Playing && oldState.status === voice_1.AudioPlayerStatus.Buffering)
+-                this.emit('audioPlayerStart', oldState, newState);
++                _this.emit('audioPlayerStart', oldState, newState);
+             else if (newState.status === voice_1.AudioPlayerStatus.Idle && oldState.status === voice_1.AudioPlayerStatus.Playing)
+-                this.emit('audioPlayerFinish', oldState, newState);
++                _this.emit('audioPlayerFinish', oldState, newState);
+             else if (newState.status === voice_1.AudioPlayerStatus.Paused && oldState.status === voice_1.AudioPlayerStatus.Playing)
+-                this.emit('audioPlayerPause', oldState, newState);
++                _this.emit('audioPlayerPause', oldState, newState);
+             else if (newState.status === voice_1.AudioPlayerStatus.Playing && oldState.status === voice_1.AudioPlayerStatus.Paused)
+-                this.emit('audioPlayerResume', oldState, newState);
++                _this.emit('audioPlayerResume', oldState, newState);
+             else if (newState.status === voice_1.AudioPlayerStatus.AutoPaused)
+-                this.emit('audioPlayerAutoPause', oldState, newState);
++                _this.emit('audioPlayerAutoPause', oldState, newState);
+             else
+-                this.emit('error', new Error(`unknown_state_change (${oldState.status} -> ${newState.status})`));
++                _this.emit('error', new Error("unknown_state_change (" + oldState.status + " -> " + newState.status + ")"));
+         });
+-        this.player.on('error', (error) => void this.emit('error', error));
++        _this.player.on('error', function (error) { return void _this.emit('error', error); });
+         try {
+-            connection.subscribe(this.player);
++            connection.subscribe(_this.player);
+         }
+         catch (error) {
+-            this.emit('error', error);
++            _this.emit('error', error);
+         }
++        return _this;
+     }
+     /**
+      * Plays an audio from a local file or url.
+      * @param {string} path The path to the audio file.
+      */
+-    play(path) {
++    Player.prototype.play = function (path) {
+         try {
+-            const resource = (0, voice_1.createAudioResource)(path, { inputType: voice_1.StreamType.Arbitrary });
++            var resource = (0, voice_1.createAudioResource)(path, { inputType: voice_1.StreamType.Arbitrary });
+             void this.player.play(resource);
+         }
+         catch (error) {
+             this.emit('error', error);
+         }
+-    }
++    };
+     /**
+      * Stops the audio player and destroys any playing resource.
+      * @returns {boolean}
+      */
+-    stop() { return this.player.stop(); }
++    Player.prototype.stop = function () { return this.player.stop(); };
+     /**
+      * Pauses/Unpauses the audio player.
+      * @returns {boolean}
+      */
+-    togglePause() {
++    Player.prototype.togglePause = function () {
+         var _a, _b;
+         if (((_a = this.player.state) === null || _a === void 0 ? void 0 : _a.status) === voice_1.AudioPlayerStatus.Paused) {
+             return this.player.unpause();
+@@ -78,12 +95,13 @@ class Player extends tiny_typed_emitter_1.TypedEmitter {
+         else {
+             return false;
+         }
+-    }
++    };
+     /**
+      * To check if the underlying resource is playble or not.
+      * @returns {boolean}
+      */
+-    isPlayable() { return this.player.checkPlayable(); }
+-}
++    Player.prototype.isPlayable = function () { return this.player.checkPlayable(); };
++    return Player;
++}(tiny_typed_emitter_1.TypedEmitter));
+ exports.Player = Player;
+ //# sourceMappingURL=player.js.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/player.js.map b/node_modules/discord-play/dist/src/player.js.map
+index 373e3ce..9e4061a 100644
+--- a/node_modules/discord-play/dist/src/player.js.map
++++ b/node_modules/discord-play/dist/src/player.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"player.js","sourceRoot":"","sources":["../../src/player.ts"],"names":[],"mappings":"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","sourcesContent":["import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, AudioPlayerStatus as Status, createAudioPlayer, createAudioResource, getVoiceConnection, NoSubscriberBehavior, StreamType, VoiceConnection } from '@discordjs/voice';\nimport { TypedEmitter } from 'tiny-typed-emitter';\n\nexport interface PlayerEvents {\n    /**\n     * The event when the player transitions into buffering state i.e. loading the resource.\n     */\n    audioPlayerBuffer: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player starts playing a resource.\n     */\n    audioPlayerStart: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player finishes playing a resource.\n     */\n    audioPlayerFinish: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player was manually paused.\n     */\n    audioPlayerPause: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player was manually resumed from the paused state.\n     */\n    audioPlayerResume: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player goes into paused state if noSubscriberBehaviour is set to autopaused.\n     */\n    audioPlayerAutoPause: (oldState: AudioPlayerState, newState: AudioPlayerState) => void,\n    /**\n     * The event when the player encounters a error.\n     */\n    error: (error: Error) => void,\n}\n\nexport class Player extends TypedEmitter<PlayerEvents> {\n    public player: AudioPlayer = createAudioPlayer({\n        behaviors: {\n            noSubscriber: NoSubscriberBehavior.Stop\n        }\n    });\n    /**\n     * Constructor to create and assign the audio player to the guild voice connection.\n     * @param guildId \n     * @returns \n     */\n    public constructor(guildId: string) {\n        super();\n        const connection: VoiceConnection | undefined = getVoiceConnection(guildId);\n        if (!connection) {\n            this.emit('error', new Error(\"no active connection found\"));\n            return;\n        }\n        this.player.on('stateChange', (oldState, newState) => {\n            if (newState.status === Status.Buffering)\n                this.emit('audioPlayerBuffer', oldState, newState);\n            else if (newState.status === Status.Playing && oldState.status === Status.Buffering)\n                this.emit('audioPlayerStart', oldState, newState);\n            else if (newState.status === Status.Idle && oldState.status === Status.Playing)\n                this.emit('audioPlayerFinish', oldState, newState);\n            else if (newState.status === Status.Paused && oldState.status === Status.Playing)\n                this.emit('audioPlayerPause', oldState, newState);\n            else if (newState.status === Status.Playing && oldState.status === Status.Paused)\n                this.emit('audioPlayerResume', oldState, newState);\n            else if (newState.status === Status.AutoPaused)\n                this.emit('audioPlayerAutoPause', oldState, newState);\n            else this.emit('error', new Error(`unknown_state_change (${oldState.status} -> ${newState.status})`));\n        });\n        this.player.on('error', (error) => void this.emit('error', error));\n        try {\n            connection.subscribe(this.player);\n        } catch (error: any) {\n            this.emit('error', error);\n        }\n    }\n    /**\n     * Plays an audio from a local file or url.\n     * @param {string} path The path to the audio file.\n     */\n    public play(path: string): void {\n        try {\n            const resource = createAudioResource(path, { inputType: StreamType.Arbitrary });\n            void this.player.play(resource);\n        } catch (error: any) {\n            this.emit('error', error);\n        }\n    }\n    /**\n     * Stops the audio player and destroys any playing resource.\n     * @returns {boolean}\n     */\n    public stop(): boolean { return this.player.stop(); }\n    /**\n     * Pauses/Unpauses the audio player.\n     * @returns {boolean}\n     */\n    public togglePause(): boolean {\n        if (this.player.state?.status === AudioPlayerStatus.Paused) {\n            return this.player.unpause();\n        } else if (this.player.state?.status === AudioPlayerStatus.Playing) {\n            return this.player.pause(true);\n        } else {\n            return false;\n        }\n    }\n    /**\n     * To check if the underlying resource is playble or not.\n     * @returns {boolean}\n     */\n    public isPlayable(): boolean { return this.player.checkPlayable(); }\n}"]}
+\ No newline at end of file
++{"version":3,"file":"player.js","sourceRoot":"","sources":["player.ts"],"names":[],"mappings":"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"}
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/src/player.ts b/node_modules/discord-play/dist/src/player.ts
 new file mode 100644
@@ -829,6 +1341,117 @@ index 0000000..70a9e56
 +     */
 +    public isPlayable(): boolean { return this.player.checkPlayable(); }
 +}
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/subscription.d.ts b/node_modules/discord-play/dist/src/subscription.d.ts
+deleted file mode 100644
+index 39071bf..0000000
+--- a/node_modules/discord-play/dist/src/subscription.d.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-//# sourceMappingURL=subscription.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/track.d.ts b/node_modules/discord-play/dist/src/track.d.ts
+index b10ab7d..03e318d 100644
+--- a/node_modules/discord-play/dist/src/track.d.ts
++++ b/node_modules/discord-play/dist/src/track.d.ts
+@@ -1,3 +1,2 @@
+ import { AudioResource } from '@discordjs/voice';
+ export declare function createTrackResource(url: string, cookies: string | undefined): Promise<AudioResource>;
+-//# sourceMappingURL=track.d.ts.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/track.js b/node_modules/discord-play/dist/src/track.js
+index 551f4eb..73284a5 100644
+--- a/node_modules/discord-play/dist/src/track.js
++++ b/node_modules/discord-play/dist/src/track.js
+@@ -1,19 +1,66 @@
+ "use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
++var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
++    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
++    return new (P || (P = Promise))(function (resolve, reject) {
++        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
++        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
++        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
++        step((generator = generator.apply(thisArg, _arguments || [])).next());
++    });
++};
++var __generator = (this && this.__generator) || function (thisArg, body) {
++    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
++    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
++    function verb(n) { return function (v) { return step([n, v]); }; }
++    function step(op) {
++        if (f) throw new TypeError("Generator is already executing.");
++        while (_) try {
++            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
++            if (y = 0, t) op = [op[0] & 2, t.value];
++            switch (op[0]) {
++                case 0: case 1: t = op; break;
++                case 4: _.label++; return { value: op[1], done: false };
++                case 5: _.label++; y = op[1]; op = [0]; continue;
++                case 7: op = _.ops.pop(); _.trys.pop(); continue;
++                default:
++                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
++                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
++                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
++                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
++                    if (t[2]) _.ops.pop();
++                    _.trys.pop(); continue;
++            }
++            op = body.call(thisArg, _);
++        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
++        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
++    }
++};
++exports.__esModule = true;
+ exports.createTrackResource = void 0;
+-const voice_1 = require("@discordjs/voice");
+-const play_dl_1 = require("play-dl");
++var voice_1 = require("@discordjs/voice");
++var play_dl_1 = require("play-dl");
+ function createTrackResource(url, cookies) {
+-    return new Promise(async (resolve, reject) => {
+-        try {
+-            const probe = await (0, play_dl_1.stream)(url, { cookie: cookies });
+-            const resource = (0, voice_1.createAudioResource)(probe.stream, { inputType: probe.type });
+-            resolve(resource);
+-        }
+-        catch (error) {
+-            reject(error);
+-        }
+-    });
++    var _this = this;
++    return new Promise(function (resolve, reject) { return __awaiter(_this, void 0, void 0, function () {
++        var probe, resource, error_1;
++        return __generator(this, function (_a) {
++            switch (_a.label) {
++                case 0:
++                    _a.trys.push([0, 2, , 3]);
++                    return [4 /*yield*/, (0, play_dl_1.stream)(url)];
++                case 1:
++                    probe = _a.sent();
++                    resource = (0, voice_1.createAudioResource)(probe.stream, { inputType: probe.type });
++                    resolve(resource);
++                    return [3 /*break*/, 3];
++                case 2:
++                    error_1 = _a.sent();
++                    reject(error_1);
++                    return [3 /*break*/, 3];
++                case 3: return [2 /*return*/];
++            }
++        });
++    }); });
+ }
+ exports.createTrackResource = createTrackResource;
+ //# sourceMappingURL=track.js.map
+\ No newline at end of file
+diff --git a/node_modules/discord-play/dist/src/track.js.map b/node_modules/discord-play/dist/src/track.js.map
+index cfe20da..2aa959e 100644
+--- a/node_modules/discord-play/dist/src/track.js.map
++++ b/node_modules/discord-play/dist/src/track.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"track.js","sourceRoot":"","sources":["../../src/track.ts"],"names":[],"mappings":";;;AAAA,4CAAsE;AACtE,qCAAiC;AAEjC,SAAgB,mBAAmB,CAAC,GAAW,EAAE,OAA2B;IACxE,OAAO,IAAI,OAAO,CAAC,KAAK,EAAE,OAAO,EAAE,MAAM,EAAE,EAAE;QACzC,IAAI;YACA,MAAM,KAAK,GAAG,MAAM,IAAA,gBAAM,EAAC,GAAG,EAAE,EAAE,MAAM,EAAE,OAAO,EAAE,CAAC,CAAC;YACrD,MAAM,QAAQ,GAAG,IAAA,2BAAmB,EAAC,KAAK,CAAC,MAAM,EAAE,EAAE,SAAS,EAAE,KAAK,CAAC,IAAI,EAAE,CAAC,CAAC;YAC9E,OAAO,CAAC,QAAQ,CAAC,CAAC;SACrB;QAAC,OAAO,KAAK,EAAE;YAAE,MAAM,CAAC,KAAK,CAAC,CAAC;SAAE;IACtC,CAAC,CAAC,CAAC;AACP,CAAC;AARD,kDAQC","sourcesContent":["import { AudioResource, createAudioResource } from '@discordjs/voice';\nimport { stream } from 'play-dl';\n\nexport function createTrackResource(url: string, cookies: string | undefined): Promise<AudioResource> {\n    return new Promise(async (resolve, reject) => {\n        try {\n            const probe = await stream(url, { cookie: cookies });\n            const resource = createAudioResource(probe.stream, { inputType: probe.type });\n            resolve(resource);\n        } catch (error) { reject(error); }\n    });\n}"]}
+\ No newline at end of file
++{"version":3,"file":"track.js","sourceRoot":"","sources":["track.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA,0CAAsE;AACtE,mCAAiC;AAEjC,SAAgB,mBAAmB,CAAC,GAAW,EAAE,OAA2B;IAA5E,iBAQC;IAPG,OAAO,IAAI,OAAO,CAAC,UAAO,OAAO,EAAE,MAAM;;;;;;oBAEnB,qBAAM,IAAA,gBAAM,EAAC,GAAG,CAAC,EAAA;;oBAAzB,KAAK,GAAG,SAAiB;oBACzB,QAAQ,GAAG,IAAA,2BAAmB,EAAC,KAAK,CAAC,MAAM,EAAE,EAAE,SAAS,EAAE,KAAK,CAAC,IAAI,EAAE,CAAC,CAAC;oBAC9E,OAAO,CAAC,QAAQ,CAAC,CAAC;;;;oBACJ,MAAM,CAAC,OAAK,CAAC,CAAC;;;;;SACnC,CAAC,CAAC;AACP,CAAC;AARD,kDAQC"}
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/src/track.ts b/node_modules/discord-play/dist/src/track.ts
 new file mode 100644
