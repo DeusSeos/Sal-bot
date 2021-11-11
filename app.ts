@@ -35,105 +35,108 @@ let DisPlay: DiscordPlay, track: Track;
 
 client.on('messageCreate', async (message: Message) => {
     const prefix = "$";
-    const command: Command = parseCommand(prefix, message.content) || { prefix, name: "", args: [] };
-    console.log(message.content);
-    switch (command.name) {
-        case "join": {
-            if (message.member!.voice.channel === null) {
-                message.reply("Error: join a voice channel to use this bot");
-                break;
-            };
-            DisPlay = new DiscordPlay(message.member!.voice, {
-                quality: "HIGHEST",
-                emptyQueueBehaviour: "CONNECTION_KEEP",
-                cookies: myCookies,
+    let lines = message.content.split('\n');
+    for (let line of lines) {
+        const command: Command = parseCommand(prefix, line) || { prefix, name: "", args: [] };
+        console.log(message.content);
+        switch (command.name) {
+            case "join": {
+                if (message.member!.voice.channel === null) {
+                    message.reply("Error: join a voice channel to use this bot");
+                    break;
+                };
+                DisPlay = new DiscordPlay(message.member!.voice, {
+                    quality: "HIGHEST",
+                    emptyQueueBehaviour: "CONNECTION_KEEP",
+                    cookies: myCookies,
 
-            });
-            DisPlay.on(DisPlayEvent.BUFFERING, (oldState, newState) => {
-                message.channel.send("Loading resource");
-            });
-            DisPlay.on(DisPlayEvent.PLAYING, (oldState, newState) => {
-                message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
-            });
-            DisPlay.on(DisPlayEvent.FINISH, (oldState, newState) => {
-                message.channel.send("Finished playing");
-            });
-            DisPlay.on('error', error => {
-                message.reply("Error");
-                console.log(error);
-            });
-            break;
-        }
-
-        case "p":
-        case "play": {
-            track = await DisPlay.enqueue(command.args.join(' '));
-            message.reply(`Enqueued, **${track.title}**`)
-            break;
-        }
-
-        case "next":
-        case "skip": {
-            DisPlay.skip();
-            message.reply("Skipped");
-            break;
-        }
-
-        case "np":
-        case "queue":
-        case "playlist": {
-            let i = 0;
-            if (DisPlay.queue.length === 0) {
-                message.reply("Queue is empty");
+                });
+                DisPlay.on(DisPlayEvent.BUFFERING, (oldState, newState) => {
+                    message.channel.send("Loading resource");
+                });
+                DisPlay.on(DisPlayEvent.PLAYING, (oldState, newState) => {
+                    message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
+                });
+                DisPlay.on(DisPlayEvent.FINISH, (oldState, newState) => {
+                    message.channel.send("Finished playing");
+                });
+                DisPlay.on('error', error => {
+                    message.reply("Error");
+                    console.log(error);
+                });
                 break;
             }
 
-            message.reply(DisPlay.queue.map(x => {
-                i++;
-                return `${i}. ${x.title}`
-            }).join("\n"));
-            break;
-        }
-
-        case "dc":
-        case "disconnect":
-        case "leave": {
-            try {
-                DisPlay.queue = [];
-                DisPlay.stop();
-                message.reply("Left voice channel");
-            } catch {
-                message.reply("No connection found");
+            case "p":
+            case "play": {
+                track = await DisPlay.enqueue(command.args.join(' '));
+                message.reply(`Enqueued, **${track.title}**`)
+                break;
             }
-            break;
-        }
 
-        case "loop": {
-            if (command.args.length == 0) {
-                message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+            case "next":
+            case "skip": {
+                DisPlay.skip();
+                message.reply("Skipped");
+                break;
             }
-            else {
-                switch (command.args[0]) {
-                    case "none":
-                        message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
-                        break;
-                    case "track":
-                    case "queue":
-                    case "playlist":
-                    case "p":
-                        message.reply(DisPlay.setLoopMode(LoopMode.QUEUE)[1]);
-                        break;
-                    case "current":
-                    case "single":
-                    case "song":
-                    case "s":
-                        message.reply(DisPlay.setLoopMode(LoopMode.SINGLE)[1]);
-                        break;
+
+            case "np":
+            case "queue":
+            case "playlist": {
+                let i = 0;
+                if (DisPlay.queue.length === 0) {
+                    message.reply("Queue is empty");
+                    break;
                 }
-            }
-            break;
-        }
 
+                message.reply(DisPlay.queue.map(x => {
+                    i++;
+                    return `${i}. ${x.title}`
+                }).join("\n"));
+                break;
+            }
+
+            case "dc":
+            case "disconnect":
+            case "leave": {
+                try {
+                    DisPlay.queue = [];
+                    DisPlay.stop();
+                    message.reply("Left voice channel");
+                } catch {
+                    message.reply("No connection found");
+                }
+                break;
+            }
+
+            case "loop": {
+                if (command.args.length == 0) {
+                    message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+                }
+                else {
+                    switch (command.args[0]) {
+                        case "none":
+                            message.reply(DisPlay.setLoopMode(LoopMode.NONE)[1]);
+                            break;
+                        case "track":
+                        case "queue":
+                        case "playlist":
+                        case "p":
+                            message.reply(DisPlay.setLoopMode(LoopMode.QUEUE)[1]);
+                            break;
+                        case "current":
+                        case "single":
+                        case "song":
+                        case "s":
+                            message.reply(DisPlay.setLoopMode(LoopMode.SINGLE)[1]);
+                            break;
+                    }
+                }
+                break;
+            }
+
+        }
     }
 });
 
@@ -144,8 +147,8 @@ process.stdin.resume();
 function exitHandler(cleanup: boolean, exit: boolean) {
     if (cleanup) {
         try {
-        DisPlay.stop();
-        console.log("Disconnected due to exit signal");
+            DisPlay.stop();
+            console.log("Disconnected due to exit signal");
         } catch {
             console.log("No connection detected. Exited")
         }
