@@ -1,0 +1,1 @@
+cd node_modules/discord-play/dist; tsc index.ts --declaration --sourceMap --esModuleInterop; rm src/*.d.ts; tsc src/*.ts --declaration --sourceMap --esModuleInterop; cd -;

@@ -1,5 +1,6 @@
 import { Client, Intents, Message } from 'discord.js';
 import { DiscordPlay, DisPlayEvent, LoopMode } from 'discord-play';
+import { VoiceConnectionDestroyedState, VoiceConnectionStatus } from '@discordjs/voice';
 require("dotenv").config();
 
 const myCookies = "your-cookies-here";
@@ -45,19 +46,41 @@ client.on('messageCreate', async (message: Message) => {
                     message.reply("Error: join a voice channel to use this bot");
                     break;
                 };
+
+                // if the DisPlay already exists, then the bot must have connected to a voice channel
+                if (DisPlay) {
+                    // if the state is "Destroyed", then the bot must have disconnected from the voice channel. reconstruct the DisPlay
+                    if ((<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status == VoiceConnectionStatus.Destroyed) {
+                        let queue = DisPlay.queue;
+                        DisPlay = new DiscordPlay(message.member!.voice, {
+                            quality: "HIGHEST",
+                            emptyQueueBehaviour: "CONNECTION_KEEP",
+                            cookies: myCookies,
+                        });
+                        for (let track of queue) {
+                            DisPlay.enqueue(track.url);
+                        }
+                    }
+                    // if the state is not "Destroyed", the bot must still be connect to a voice channel, or is in the process of changing state
+                    else {
+                        message.reply("Error: Already connected to a voice channel");
+                    }
+                    break;
+                }
+
                 DisPlay = new DiscordPlay(message.member!.voice, {
                     quality: "HIGHEST",
                     emptyQueueBehaviour: "CONNECTION_KEEP",
                     cookies: myCookies,
-
                 });
-                DisPlay.on(DisPlayEvent.BUFFERING, (oldState, newState) => {
+
+                DisPlay.on(DisPlayEvent.BUFFERING, (_o, _n) => {
                     message.channel.send("Loading resource");
                 });
-                DisPlay.on(DisPlayEvent.PLAYING, (oldState, newState) => {
+                DisPlay.on(DisPlayEvent.PLAYING, (_o, _n) => {
                     message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
                 });
-                DisPlay.on(DisPlayEvent.FINISH, (oldState, newState) => {
+                DisPlay.on(DisPlayEvent.FINISH, (_o, _n) => {
                     message.channel.send("Finished playing");
                 });
                 DisPlay.on('error', error => {
@@ -69,6 +92,10 @@ client.on('messageCreate', async (message: Message) => {
 
             case "p":
             case "play": {
+                if (command.args.length == 0) {
+                    message.reply("Error: no input provided");
+                    break;
+                }
                 track = await DisPlay.enqueue(command.args.join(' '));
                 message.reply(`Enqueued, **${track.title}**`)
                 break;
@@ -101,12 +128,26 @@ client.on('messageCreate', async (message: Message) => {
             case "disconnect":
             case "leave": {
                 try {
-                    DisPlay.queue = [];
+                    DisPlay.set_pause(true);
                     DisPlay.stop();
                     message.reply("Left voice channel");
                 } catch {
                     message.reply("No connection found");
                 }
+                break;
+            }
+
+            case "pause":
+            case "p": {
+                DisPlay.set_pause(true);
+                message.reply("Paused");
+                break;
+            }
+
+            case "resume":
+            case "r": {
+                DisPlay.set_pause(false);
+                message.reply("Resumed");
                 break;
             }
 
@@ -156,13 +197,13 @@ function exitHandler(cleanup: boolean, exit: boolean) {
     if (exit) process.exit();
 }
 
-//do something when app is closing
+// when app is closing
 process.on('exit', exitHandler.bind(true, true));
 
-//catches ctrl+c event
+// catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(true, true));
 
-// catches "kill pid" (for example: nodemon restart)
+// catches kill signals
 process.on('SIGUSR1', exitHandler.bind(true, true));
 process.on('SIGUSR2', exitHandler.bind(true, true));
 
