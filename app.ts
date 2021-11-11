@@ -34,7 +34,7 @@ interface Track {
 let DisPlay: DiscordPlay, track: Track;
 
 client.on('messageCreate', async (message: Message) => {
-    const prefix = "$";
+    const prefix = process.env.PREFIX ? process.env.PREFIX : "$";
     let lines = message.content.split('\n');
     for (let line of lines) {
         const command: Command = parseCommand(prefix, line) || { prefix, name: "", args: [] };
