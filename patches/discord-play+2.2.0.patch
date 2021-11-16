@@ -1,5 +1,5 @@
 diff --git a/node_modules/discord-play/dist/index.d.ts b/node_modules/discord-play/dist/index.d.ts
-index ecc38c0..c9d479e 100644
+index ecc38c0..296128d 100644
 --- a/node_modules/discord-play/dist/index.d.ts
 +++ b/node_modules/discord-play/dist/index.d.ts
 @@ -12,7 +12,7 @@ interface Options {
@@ -21,7 +21,7 @@ index ecc38c0..c9d479e 100644
  interface Enqueue {
      /**
       * The video title for the track.
-@@ -33,22 +36,40 @@ interface Enqueue {
+@@ -33,22 +36,41 @@ interface Enqueue {
       * The name of channel of the track video.
       */
      artist: string;
@@ -60,6 +60,7 @@ index ecc38c0..c9d479e 100644
 -    private songLoop;
 -    private queueLoop;
 +    private loop_state;
++    private has_connected;
      /**
 -     * Initializes the Connection, Player.
 -     * Re-exports all the events to be directly emitted from here,
@@ -68,26 +69,39 @@ index ecc38c0..c9d479e 100644
       * @param voice The voice channel object
       * @param options Various options to configure DiscordPlay
       */
-@@ -69,11 +90,10 @@ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
+@@ -69,11 +91,22 @@ export declare class DiscordPlay extends TypedEmitter<DiscordPlayEvents> {
      /**
       *
       */
 -    toggleSongLoop(): boolean;
++    set_pause(pause: boolean): void;
++    /**
++     *
++     */
++    disconnect(): void;
++    /**
++     *
++     */
++    rejoin(voice: any): boolean;
++    /**
++     *
++     */
 +    setLoopMode(new_state: LoopMode): [LoopMode, string];
      /**
       * Processes the queue and executes behaviour.
       */
-     private processQueue;
+-    private processQueue;
++    processQueue(): void;
  }
 -export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent };
 -//# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 +export { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent, LoopMode };
 diff --git a/node_modules/discord-play/dist/index.js b/node_modules/discord-play/dist/index.js
-index c1c3e74..0f96d10 100644
+index c1c3e74..c9b8f16 100644
 --- a/node_modules/discord-play/dist/index.js
 +++ b/node_modules/discord-play/dist/index.js
-@@ -1,93 +1,194 @@
+@@ -1,93 +1,233 @@
  "use strict";
 -Object.defineProperty(exports, "__esModule", { value: true });
 -exports.DisPlayEvent = exports.DisPlayPlayer = exports.DisPlayConnection = exports.DiscordPlay = void 0;
@@ -210,6 +224,7 @@ index c1c3e74..0f96d10 100644
 +        var _this = _super.call(this) || this;
 +        _this.queue = [];
 +        _this.loop_state = LoopMode.NONE;
++        _this.has_connected = false;
 +        _this.options = options;
 +        _this.connection = new connection_js_1.Connection(voice);
 +        _this.player = new player_js_1.Player(voice.guild.id);
@@ -232,12 +247,13 @@ index c1c3e74..0f96d10 100644
 -            this.processQueue();
 +        _this.player.on("audioPlayerFinish", function (arg1, arg2) {
 +            _this.emit("audioPlayerFinish", arg1, arg2);
-+            if (_this.loop_state == LoopMode.SINGLE)
++            if (_this.loop_state == LoopMode.NONE)
 +                _this.queue.shift();
 +            if (_this.loop_state == LoopMode.QUEUE)
 +                _this.queue.push(_this.queue.shift());
 +            _this.processQueue();
          });
++        _this.has_connected = true;
 +        return _this;
      }
      /**
@@ -312,6 +328,43 @@ index c1c3e74..0f96d10 100644
 -    toggleSongLoop() {
 -        return this.songLoop = !this.songLoop;
 -    }
++    DiscordPlay.prototype.set_pause = function (pause) {
++        pause ? this.player.player.pause(true) : this.player.player.unpause();
++    };
++    /**
++     *
++     */
++    DiscordPlay.prototype.disconnect = function () {
++        this.connection.connection.disconnect();
++    };
++    /**
++     *
++     */
++    DiscordPlay.prototype.rejoin = function (voice) {
++        var _this = this;
++        this.connection = new connection_js_1.Connection(voice);
++        this.player = new player_js_1.Player(voice.guild.id);
++        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(function (eventName) {
++            // @ts-ignore
++            _this.connection.on(eventName, function (arg1, arg2) { return _this.emit(eventName, arg1, arg2); });
++        });
++        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(function (eventName) {
++            // @ts-ignore
++            _this.player.on(eventName, function (arg1, arg2) { return _this.emit(eventName, arg1, arg2); });
++        });
++        this.player.on("audioPlayerFinish", function (arg1, arg2) {
++            _this.emit("audioPlayerFinish", arg1, arg2);
++            if (_this.loop_state == LoopMode.NONE)
++                _this.queue.shift();
++            if (_this.loop_state == LoopMode.QUEUE)
++                _this.queue.push(_this.queue.shift());
++            _this.processQueue();
++        });
++        return true;
++    };
++    /**
++     *
++     */
 +    DiscordPlay.prototype.setLoopMode = function (new_state) {
 +        if (this.loop_state == LoopMode.NONE)
 +            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
@@ -341,7 +394,7 @@ index c1c3e74..0f96d10 100644
          if (!this.queue.length) {
              switch (this.options.emptyQueueBehaviour) {
                  case "CONNECTION_KEEP": break;
-@@ -100,9 +201,9 @@ class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
+@@ -100,9 +240,9 @@ class DiscordPlay extends tiny_typed_emitter_1.TypedEmitter {
          if (this.player.player.state.status !== voice_1.AudioPlayerStatus.Idle)
              return;
          (0, track_js_1.createTrackResource)(this.queue[0].url, this.cookies)
@@ -357,20 +410,20 @@ index c1c3e74..0f96d10 100644
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/index.js.map b/node_modules/discord-play/dist/index.js.map
-index cea5869..3d0609b 100644
+index cea5869..2aa2964 100644
 --- a/node_modules/discord-play/dist/index.js.map
 +++ b/node_modules/discord-play/dist/index.js.map
 @@ -1 +1 @@
 -{"version":3,"file":"index.js","sourceRoot":"","sources":["../index.ts"],"names":[],"mappings":"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","sourcesContent":["import { AudioPlayerStatus, createAudioResource } from '@discordjs/voice';\nimport { search, stream, stream_from_info, video_basic_info, video_info, yt_validate } from 'play-dl';\nimport { Video } from 'play-dl/dist/YouTube/classes/Video';\nimport { TypedEmitter } from 'tiny-typed-emitter';\nimport { Connection, ConnectionEvents } from './src/connection.js';\nimport { DisPlayEvent } from './src/eventEnums.js';\nimport { Player, PlayerEvents } from './src/player.js';\nimport { createTrackResource } from './src/track.js';\n\ninterface Options {\n    /**\n     * (Optional) The cookies to play age-restricted videos.\n     */\n    cookies?: string,\n    /**\n     * Sets the quality of streams.\n     */\n    quality: \"LOWEST\" | \"MEDIUM\" | \"HIGHEST\",\n    /**\n     * Defines the behaviour of what should happen after the queue array goes empty.\n     * \n     * CONNECTION_KEEP - Continues to remain in the voice channel.\n     * \n     * CONNECTION_DESTROY - Leaves the voice channel.\n     */\n    emptyQueueBehaviour: \"CONNECTION_KEEP\" | \"CONNECTION_DESTROY\"\n}\n\ninterface Enqueue {\n    /**\n     * The video title for the track.\n     */\n    title: string,\n    /**\n     * The video url for the track.\n     */\n    url: string,\n    /**\n     * The name of channel of the track video.\n     */\n    artist: string\n}\n\ninterface DiscordPlayEvents extends ConnectionEvents, PlayerEvents { }\n\nexport class DiscordPlay extends TypedEmitter<DiscordPlayEvents>{\n    public connection: Connection;\n    public player: Player;\n    private cookies: string | undefined;\n    public queue: Enqueue[] = [];\n    public options: Options;\n    private songLoop = false;\n    private queueLoop = false;\n    /**\n     * Initializes the Connection, Player.\n     * Re-exports all the events to be directly emitted from here,\n     * and not from the modules itself, for easier event handling.\n     * \n     * @param voice The voice channel object\n     * @param options Various options to configure DiscordPlay\n     */\n    constructor(voice: any, options: Options) {\n        super();\n        this.options = options;\n        this.connection = new Connection(voice);\n        this.player = new Player(voice.guild.id);\n        this.cookies = options?.cookies;\n        [\"voiceConnectionCreate\", \"voiceConnectionMove\", \"voiceConnectionKick\", \"voiceConnectionDestroy\", \"selfDeafen\", \"selfMute\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        [\"audioPlayerBuffer\", \"audioPlayerStart\", \"audioPlayerPause\", \"audioPlayerResume\", \"audioPlayerAutoPause\", \"error\"].forEach(eventName => {\n            // @ts-ignore\n            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));\n        });\n        this.player.on(\"audioPlayerFinish\", (arg1, arg2) => {\n            this.emit(\"audioPlayerFinish\", arg1, arg2);\n            if (!this.songLoop) this.queue.shift();\n            this.processQueue();\n        });\n    }\n    /**\n     * Enqueues the track from the args provided.\n     * @param args The terms to be searched. (Can be terms or a youtube url)\n     */\n    public async enqueue(args: string): Promise<Enqueue> {\n        let details;\n        switch (yt_validate(args)) {\n            case \"video\":\n                details = (await video_basic_info(args, this.cookies)).video_details;\n                break;\n            default:\n                details = (await search(args, { limit: 1 }))![0];\n                break;\n        }\n        // @ts-ignore\n        const track: Enqueue = { title: details.title, url: details.url!, artist: details.channel?.name };\n        this.queue.push(track);\n        this.processQueue();\n        return track;\n    }\n    /**\n     * \n     */\n    public skip(): void {\n        this.player.stop();\n    }\n    /**\n     * \n     */\n    public stop(): void {\n        this.player.stop();\n        this.connection.destroy();\n    }\n    /**\n     * \n     */\n    public toggleSongLoop(): boolean {\n        return this.songLoop = !this.songLoop;\n    }\n    /**\n     * Processes the queue and executes behaviour.\n     */\n    private processQueue(): void {\n        if (!this.queue.length) {\n            switch (this.options.emptyQueueBehaviour) {\n                case \"CONNECTION_KEEP\": break;\n                case \"CONNECTION_DESTROY\": this.connection.destroy(); break;\n            }\n            return;\n        }\n        if (this.player.player.state.status !== AudioPlayerStatus.Idle) return;\n        createTrackResource(this.queue[0].url, this.cookies)\n            .then(resource => void this.player.player.play(resource))\n            .catch(error => this.emit('error', error));\n    }\n}\n\nexport { Connection as DisPlayConnection, Player as DisPlayPlayer, DisPlayEvent };"]}
 \ No newline at end of file
-+{"version":3,"file":"index.js","sourceRoot":"","sources":["index.ts"],"names":[],"mappings":"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"}
++{"version":3,"file":"index.js","sourceRoot":"","sources":["index.ts"],"names":[],"mappings":"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"}
 \ No newline at end of file
 diff --git a/node_modules/discord-play/dist/index.ts b/node_modules/discord-play/dist/index.ts
 new file mode 100644
-index 0000000..5d1caa2
+index 0000000..9c01ae3
 --- /dev/null
 +++ b/node_modules/discord-play/dist/index.ts
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,214 @@
 +import { AudioPlayerStatus } from '@discordjs/voice';
 +import { search, video_basic_info, yt_validate } from 'play-dl';
 +import { TypedEmitter } from 'tiny-typed-emitter';
@@ -449,6 +502,7 @@ index 0000000..5d1caa2
 +    public queue: Enqueue[] = [];
 +    public options: Options;
 +    private loop_state = LoopMode.NONE;
++    private has_connected = false;
 +    /** 
 +     * @param voice The voice channel object
 +     * @param options Various options to configure DiscordPlay
@@ -469,10 +523,11 @@ index 0000000..5d1caa2
 +        });
 +        this.player.on("audioPlayerFinish", (arg1, arg2) => {
 +            this.emit("audioPlayerFinish", arg1, arg2);
-+            if (this.loop_state == LoopMode.SINGLE) this.queue.shift();
++            if (this.loop_state == LoopMode.NONE) this.queue.shift();
 +            if (this.loop_state == LoopMode.QUEUE) this.queue.push(this.queue.shift());
 +            this.processQueue();
 +        });
++        this.has_connected = true;
 +    }
 +    /**
 +     * Enqueues the track from the args provided.
@@ -510,6 +565,40 @@ index 0000000..5d1caa2
 +    /**
 +     * 
 +     */
++    public set_pause(pause: boolean): void {
++        pause ? this.player.player.pause(true) : this.player.player.unpause();
++    }
++    /**
++     * 
++     */
++    public disconnect(): void {
++        this.connection.connection.disconnect();
++    }
++    /**
++     * 
++     */
++    public rejoin(voice: any): boolean {
++        this.connection = new Connection(voice);
++        this.player = new Player(voice.guild.id);
++        ["voiceConnectionCreate", "voiceConnectionMove", "voiceConnectionKick", "voiceConnectionDestroy", "selfDeafen", "selfMute", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.connection.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        ["audioPlayerBuffer", "audioPlayerStart", "audioPlayerPause", "audioPlayerResume", "audioPlayerAutoPause", "error"].forEach(eventName => {
++            // @ts-ignore
++            this.player.on(eventName, (arg1, arg2) => this.emit(eventName, arg1, arg2));
++        });
++        this.player.on("audioPlayerFinish", (arg1, arg2) => {
++            this.emit("audioPlayerFinish", arg1, arg2);
++            if (this.loop_state == LoopMode.NONE) this.queue.shift();
++            if (this.loop_state == LoopMode.QUEUE) this.queue.push(this.queue.shift());
++            this.processQueue();
++        });
++        return true;
++    }
++    /**
++     * 
++     */
 +    public setLoopMode(new_state: LoopMode): [LoopMode, string] {
 +        if (this.loop_state == LoopMode.NONE)
 +            return [this.loop_state = new_state, "Loop mode set to " + LoopMode[new_state]];
@@ -533,7 +622,7 @@ index 0000000..5d1caa2
 +    /**
 +     * Processes the queue and executes behaviour.
 +     */
-+    private processQueue(): void {
++    public processQueue(): void {
 +        if (!this.queue.length) {
 +            switch (this.options.emptyQueueBehaviour) {
 +                case "CONNECTION_KEEP": break;

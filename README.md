@@ -2,7 +2,7 @@
 
 **Generating a patch of module changes:**
 
-To generate the patch file use `npx patch-package "{module-name}" `.
+To generate the patch file use `npx patch-package "{module-name}"`.
 
 **Applying discord-play patches after git pull:**
 
