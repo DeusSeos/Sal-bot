@@ -42,56 +42,18 @@ client.on('messageCreate', async (message: Message) => {
         console.log(message.content);
         switch (command.name) {
             case "join": {
-                if (message.member!.voice.channel === null) {
-                    message.reply("Error: join a voice channel to use this bot");
-                    break;
-                };
-
-                // if the DisPlay already exists, then the bot must have connected to a voice channel
-                if (DisPlay) {
-                    // if the state is "Destroyed", then the bot must have disconnected from the voice channel. reconstruct the DisPlay
-                    if ((<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status == VoiceConnectionStatus.Destroyed) {
-                        let queue = DisPlay.queue;
-                        DisPlay = new DiscordPlay(message.member!.voice, {
-                            quality: "HIGHEST",
-                            emptyQueueBehaviour: "CONNECTION_KEEP",
-                            cookies: myCookies,
-                        });
-                        for (let track of queue) {
-                            DisPlay.enqueue(track.url);
-                        }
-                    }
-                    // if the state is not "Destroyed", the bot must still be connect to a voice channel, or is in the process of changing state
-                    else {
-                        message.reply("Error: Already connected to a voice channel");
-                    }
-                    break;
-                }
-
-                DisPlay = new DiscordPlay(message.member!.voice, {
-                    quality: "HIGHEST",
-                    emptyQueueBehaviour: "CONNECTION_KEEP",
-                    cookies: myCookies,
-                });
-
-                DisPlay.on(DisPlayEvent.BUFFERING, (_o, _n) => {
-                    message.channel.send("Loading resource");
-                });
-                DisPlay.on(DisPlayEvent.PLAYING, (_o, _n) => {
-                    message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
-                });
-                DisPlay.on(DisPlayEvent.FINISH, (_o, _n) => {
-                    message.channel.send("Finished playing");
-                });
-                DisPlay.on('error', error => {
-                    message.reply("Error");
-                    console.log(error);
-                });
+                join(message);
                 break;
             }
 
             case "p":
             case "play": {
+                //use join method but with false to prevent already connected message
+
+                if (DisPlay) {
+                    join(message);
+                }
+
                 if (command.args.length == 0) {
                     message.reply("Error: no input provided");
                     break;
@@ -210,6 +172,57 @@ process.on('SIGUSR2', exitHandler.bind(true, true));
 
 //catches uncaught exceptions
 process.on('uncaughtException', exitHandler.bind(true, true));
+
+//Join function logic
+function join(message: Message) {
+    if (message.member!.voice.channel === null) {
+        message.reply("Error: join a voice channel to use this bot");
+        return;
+    };
+
+    // if the DisPlay already exists, then the bot must have connected to a voice channel
+    if (DisPlay) {
+        // if the state is "Destroyed", then the bot must have disconnected from the voice channel. reconstruct the DisPlay
+        if ((<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status == VoiceConnectionStatus.Destroyed) {
+            let queue = DisPlay.queue;
+            DisPlay = new DiscordPlay(message.member!.voice, {
+                quality: "HIGHEST",
+                emptyQueueBehaviour: "CONNECTION_KEEP",
+                cookies: myCookies,
+            });
+            for (let track of queue) {
+                DisPlay.enqueue(track.url);
+            }
+        }
+        // if the state is not "Destroyed", the bot must still be connected to a voice channel, or is in the process of changing state
+        else {
+            message.reply("Error: Already connected to a voice channel");
+        }
+        return;
+    }
+
+    DisPlay = new DiscordPlay(message.member!.voice, {
+        quality: "HIGHEST",
+        emptyQueueBehaviour: "CONNECTION_KEEP",
+        cookies: myCookies,
+    });
+    /*
+    //removing this annoying message
+    DisPlay.on(DisPlayEvent.BUFFERING, (_o, _n) => {
+        message.channel.send("Loading resource");
+    });
+    */
+    DisPlay.on(DisPlayEvent.PLAYING, (_o, _n) => {
+        message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
+    });
+    DisPlay.on(DisPlayEvent.FINISH, (_o, _n) => {
+        message.channel.send("Finished playing");
+    });
+    DisPlay.on('error', error => {
+        message.reply("Error");
+        console.log(error);
+    });
+};
 
 function parseCommand(prefix: string, content: string): Command | undefined {
     content = content.trim();
