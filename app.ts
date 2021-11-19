@@ -49,11 +49,13 @@ client.on('messageCreate', async (message: Message) => {
             case "p":
             case "play": {
                 //use join method but with false to prevent already connected message
-
-                if (DisPlay) {
+                if (message.member!.voice.channel === null) {
+                    message.reply("Error: join a voice channel to use this bot");
+                    break;
+                } 
+                if (!DisPlay) {
                     join(message);
                 }
-
                 if (command.args.length == 0) {
                     message.reply("Error: no input provided");
                     break;
@@ -161,17 +163,17 @@ function exitHandler(cleanup: boolean, exit: boolean) {
 }
 
 // when app is closing
-process.on('exit', exitHandler.bind(true, true));
+//process.on('exit', exitHandler.bind(true, true));
 
 // catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(true, true));
 
 // catches kill signals
-process.on('SIGUSR1', exitHandler.bind(true, true));
-process.on('SIGUSR2', exitHandler.bind(true, true));
+//process.on('SIGUSR1', exitHandler.bind(true, true));
+//process.on('SIGUSR2', exitHandler.bind(true, true));
 
 //catches uncaught exceptions
-process.on('uncaughtException', exitHandler.bind(true, true));
+//process.on('uncaughtException', exitHandler.bind(true, true));
 
 //Join function logic
 function join(message: Message) {
