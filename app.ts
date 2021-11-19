@@ -108,6 +108,7 @@ client.on('messageCreate', async (message: Message) => {
                 break;
             }
 
+            case "q":
             case "np":
             case "queue":
             case "playlist": {
@@ -212,11 +213,14 @@ process.on('uncaughtException', exitHandler.bind(true, true));
 
 function parseCommand(prefix: string, content: string): Command | undefined {
     content = content.trim();
+    //check if message starts with prefix
     if (content.startsWith(prefix)) {
+        //remove prefix and split into command and args
+        //makes commands lowercase
         const args = content.slice(prefix.length).split(' ');
         return {
             prefix,
-            name: args[0],
+            name: args[0].toLowerCase(),
             args: args.slice(1)
         }
     }
