@@ -58,8 +58,10 @@ client.on('messageCreate', async (message: Message) => {
                     message.reply("Error: join a voice channel to use this bot");
                     break;
                 } 
-                
-                join(message);
+                //if not connected, connect
+                if (DisPlay === undefined) {
+                    join(message);
+                }
                 
                 track = await DisPlay.enqueue(command.args.join(' '));
                 message.reply(`Enqueued, **${track.title}**`)
@@ -229,6 +231,10 @@ function join(message: Message) {
         console.log(error);
     });
 };
+
+function connected() {
+    return (<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status != VoiceConnectionStatus.Destroyed;
+}
 
 function parseCommand(prefix: string, content: string): Command | undefined {
     content = content.trim();
