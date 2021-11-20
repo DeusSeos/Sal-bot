@@ -15,7 +15,7 @@ const client: Client = new Client({
 
 client.once("ready", () => {
     console.log(`Ready!`);
-    client.user!.setStatus('idle');
+    client.user!.setStatus('online');
     client.user!.setActivity("a war is at hand", { type: "LISTENING" });
 
 });
@@ -39,7 +39,8 @@ client.on('messageCreate', async (message: Message) => {
     let lines = message.content.split('\n');
     for (let line of lines) {
         const command: Command = parseCommand(prefix, line) || { prefix, name: "", args: [] };
-        console.log(message.content);
+        if (command.name === "") return;
+        console.log(`${command.prefix}${command.name}`+command.args.join(" "));
         switch (command.name) {
             case "join": {
                 join(message);
@@ -47,19 +48,19 @@ client.on('messageCreate', async (message: Message) => {
             }
 
             case "p":
-            case "play": {
+                case "play": {
+                if (command.args.length == 0) {
+                    message.reply("Error: no input provided");
+                    break;
+                }
                 //use join method but with false to prevent already connected message
                 if (message.member!.voice.channel === null) {
                     message.reply("Error: join a voice channel to use this bot");
                     break;
                 } 
-                if (!DisPlay) {
-                    join(message);
-                }
-                if (command.args.length == 0) {
-                    message.reply("Error: no input provided");
-                    break;
-                }
+                
+                join(message);
+                
                 track = await DisPlay.enqueue(command.args.join(' '));
                 message.reply(`Enqueued, **${track.title}**`)
                 break;
@@ -92,12 +93,13 @@ client.on('messageCreate', async (message: Message) => {
             case "dc":
             case "disconnect":
             case "leave": {
-                try {
+                if ((<VoiceConnectionDestroyedState>DisPlay.connection.connection.state).status != VoiceConnectionStatus.Destroyed){
                     DisPlay.set_pause(true);
                     DisPlay.stop();
                     message.reply("Left voice channel");
-                } catch {
-                    message.reply("No connection found");
+                }
+                else {
+                    message.reply("Error: Not connected to a voice channel");
                 }
                 break;
             }
@@ -216,9 +218,11 @@ function join(message: Message) {
     */
     DisPlay.on(DisPlayEvent.PLAYING, (_o, _n) => {
         message.channel.send(`Now playing, **${DisPlay.queue[0].title}**`);
+        client.user!.setActivity(`${DisPlay.queue[0].title} - ${DisPlay.queue[0].artist}`, { type: "LISTENING" });
     });
     DisPlay.on(DisPlayEvent.FINISH, (_o, _n) => {
         message.channel.send("Finished playing");
+        client.user!.setActivity("nothing", {type: "LISTENING"});
     });
     DisPlay.on('error', error => {
         message.reply("Error");
