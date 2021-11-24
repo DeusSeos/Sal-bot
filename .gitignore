@@ -4,3 +4,4 @@ node_modules
 jsconfig.json
 run.sh
 aws-key.pem
+.vscode

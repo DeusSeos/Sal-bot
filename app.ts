@@ -1,6 +1,10 @@
 import { Client, Intents, Message } from 'discord.js';
 import { DiscordPlay, DisPlayEvent, LoopMode } from 'discord-play';
 import { VoiceConnectionDestroyedState, VoiceConnectionStatus } from '@discordjs/voice';
+import { playlist_info, yt_validate } from 'play-dl';
+import { YouTubeVideo } from 'play-dl/dist/YouTube/classes/Video';
+import { YouTubePlayList } from 'play-dl/dist/YouTube/classes/Playlist';
+
 require("dotenv").config();
 
 const myCookies = "your-cookies-here";
@@ -62,7 +66,7 @@ client.on('messageCreate', async (message: Message) => {
                 if (DisPlay === undefined) {
                     join(message);
                 }
-                
+                console.log(yt_validate(command.args.join(" ")).toString());
                 track = await DisPlay.enqueue(command.args.join(' '));
                 message.reply(`Enqueued, **${track.title}**`)
                 break;
@@ -107,7 +111,7 @@ client.on('messageCreate', async (message: Message) => {
             }
 
             case "pause":
-            case "p": {
+            case "stop": {
                 DisPlay.set_pause(true);
                 message.reply("Paused");
                 break;
@@ -144,6 +148,24 @@ client.on('messageCreate', async (message: Message) => {
                     }
                 }
                 break;
+            }
+
+            case "type": {
+                message.reply(yt_validate(command.args.join(" ")).toString());
+                let playlist:YouTubePlayList = await playlist_info(command.args.join(" "));
+                await playlist.fetch();
+                //console.log(playlist.fetch());
+                console.log(playlist.total_pages);
+                let result = [];
+                for (let i = 1; i <= playlist.total_pages; i++) {
+                    for (let video of playlist.page(i)) {
+                        result.push(video);
+                    }
+                }
+                for (let video of result) {
+                    console.log(video.title);
+                }
+                break;   
             }
 
         }
